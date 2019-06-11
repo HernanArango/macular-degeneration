@@ -1,8 +1,13 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-#filename = "images/im0009.ppm"
+
 filename = "images/im0010.ppm"
+#problemas
+#filename = "images/im0014.ppm"
+#filename = "images/im0023.ppm"
+#filename = "images/im0015.ppm"
+#filename = "images/im0037.ppm"
 
 
 def show_image(image,tittle):
@@ -19,19 +24,32 @@ def histogram(image):
     plt.xlim([0, 256])
     plt.show()
 
-def prueba(image,value):
-    rows, cols,channel = image.shape
+def removing_dark_pixel(image):
 
-    #image = image[2]
+    rows, cols = image.shape
+    new_matriz = np.zeros((rows, cols))
+    #hist = cv2.calcHist([image], [1], None, [256], [0, 256])
+    average = np.average(image)
+    max = np.amax(image)
+    #average = max - average
+
+    print("max",max)
+
+
     print(image[0][1])
-
-
+    print("average", average)
+    total = 0
     for i in range(0,rows):
         for j in range(0,cols):
-            #print(image[i][j])
-            if image[i][j][1] >= 175:
-                print("entro")
-                cv2.circle(image,(i,j), 20, (0,0,255), -1)
+            total +=image[i][j]
+            if image[i][j] <= average:
+                image[i][j] = 0
+
+            #else:
+                #image[i][j] = 0
+    print("average2",total/(rows*cols))
+    return image
+
 def threshold(img,t):
     rows, cols = img.shape
     new_matriz = np.zeros((rows, cols))
@@ -57,38 +75,66 @@ def stretch(image):
 
 
 def detect_optical_disc(image):
-    show_image(image,"normal")
-    image = cv2.blur(image,(25,35))
 
-    #blue
-    #image[:,:,0] = 0
-    #green
-    #image[:,:,1] = 0
-    #red
-    #image[:,:,2] = 0
+    #show_image(image,"normal")
+
+
+
+    #image = cv2.blur(image,(25,35))
+
     b,g,r = cv2.split(image)
-    #show_image(g,"transformacionxx")
 
-    #g = 0.2 * (np.log(1 + np.float32(g)))
-    # change into uint8
-    #cvuint = cv2.convertScaleAbs(g)
+
+    # create a CLAHE object (Arguments are optional).
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
+    new_image = clahe.apply(g)
+    show_image(new_image,"clahe")
+
+
+    #new_image = cv2.blur(new_image,(1,1))
+    #new_image = cv2.GaussianBlur(new_image,(1,1),0)
+    #show_image(new_image,"borrosa")
+
+    #new_image = removing_dark_pixel(new_image)
+    #show_image(new_image,"removing removing_dark_pixel")
+    #new_image = threshold(new_image,90)
+
+    new_image = cv2.Canny(new_image,80,80)
+
+    show_image(new_image,"bordes")
+
+    new_image = cv2.dilate(new_image, None, iterations=1)
+    show_image(new_image,"dilate")
+    #new_image = cv2.erode(new_image, None, iterations=1)
+    #show_image(new_image,"erode")
+    cimg = cv2.cvtColor(new_image,cv2.COLOR_GRAY2BGR)
+
+    circles = cv2.HoughCircles(new_image,cv2.HOUGH_GRADIENT,1,20,
+                            param1=50,param2=30,minRadius=30,maxRadius=90)
+    if circles is not  None:
+
+        circles = np.uint16(np.around(circles))
+
+        for i in circles[0,:]:
+            # draw the outer circle
+            cv2.circle(cimg,(i[0],i[1]),i[2],(0,255,0),2)
+            # draw the center of the circle
+            cv2.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
+
+        show_image(cimg,'detected circles')
+    else:
+        print("No se encontro disco optico")
+
+
 
     #transformacion no exacta como en el paper
-    new_image = cv2.convertScaleAbs(g, alpha=1.5, beta=1.5)
+    #new_image = cv2.convertScaleAbs(g, alpha=1.5, beta=1.5)
+    #show_image(new_image,"resaltado")
     #new_image = stretch(image)
-    show_image(g,"resaltadoz")
-    show_image(new_image,"resaltado")
-    #Crear un kernel de '1' de 3x3 elipse
-    #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))
+    #show_image(g,"green channel")
 
-    #Se aplica la transformacion: Opening
-    #new_image = cv2.morphologyEx(new_image,cv2.MORPH_OPEN,kernel)
-
-    #retval, threshold = cv2.threshold(new_image, 12, 1, cv2.THRESH_BINARY)
-    # Otsu's thresholding
-    #ret2,threshold = cv2.threshold(new_image,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    th = threshold(new_image,175)
-    show_image(th,"transformacionzz")
+    #new_image = threshold(new_image,175)
+    #show_image(new_image,"transformacionzz")
 
 
     #Crear un kernel de '1' de 3x3 elipse
