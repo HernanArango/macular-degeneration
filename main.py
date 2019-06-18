@@ -1,14 +1,15 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import RRO_thresholding
 
-filename = "images/im0010.ppm"
+filename = "images/im0002.ppm"
+filename = "images/lena.jpg"
 #problemas
 #filename = "images/im0014.ppm"
 #filename = "images/im0023.ppm"
 #filename = "images/im0015.ppm"
 #filename = "images/im0037.ppm"
-
 
 def show_image(image,tittle):
     cv2.imshow(tittle, image)
@@ -84,7 +85,6 @@ def detect_optical_disc(image):
 
     b,g,r = cv2.split(image)
 
-
     # create a CLAHE object (Arguments are optional).
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
     new_image = clahe.apply(g)
@@ -92,21 +92,27 @@ def detect_optical_disc(image):
 
 
     #new_image = cv2.blur(new_image,(1,1))
-    #new_image = cv2.GaussianBlur(new_image,(1,1),0)
+    #new_image = cv2.GaussianBlur(new_image,(55,55),0)
     #show_image(new_image,"borrosa")
 
-    #new_image = removing_dark_pixel(new_image)
-    #show_image(new_image,"removing removing_dark_pixel")
+    new_image = removing_dark_pixel(new_image)
+    show_image(new_image,"removing removing_dark_pixel")
+    RRO = RRO_thresholding.RRO_thresholding()
+    new_image = RRO.calculate(new_image)
+
     #new_image = threshold(new_image,90)
 
-    new_image = cv2.Canny(new_image,80,80)
-
+    #new_image = cv2.Canny(new_image,110,100)
+    #new_image = cv2.adaptiveThreshold(new_image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,\
+            #cv2.THRESH_BINARY,11,2)
     show_image(new_image,"bordes")
 
-    new_image = cv2.dilate(new_image, None, iterations=1)
-    show_image(new_image,"dilate")
+
+    #new_image = cv2.dilate(new_image, None, iterations=1)
+    #show_image(new_image,"dilate")
     #new_image = cv2.erode(new_image, None, iterations=1)
     #show_image(new_image,"erode")
+    """
     cimg = cv2.cvtColor(new_image,cv2.COLOR_GRAY2BGR)
 
     circles = cv2.HoughCircles(new_image,cv2.HOUGH_GRADIENT,1,20,
@@ -124,6 +130,7 @@ def detect_optical_disc(image):
         show_image(cimg,'detected circles')
     else:
         print("No se encontro disco optico")
+    """
 
 
 
@@ -150,7 +157,7 @@ def detect_optical_disc(image):
     #show_image(transformacion,"transformacion")
 
 image = cv2.imread(filename)
-#b,g,r = cv2.split(image)
+b,g,r = cv2.split(image)
 
 #blue
 #image[:,:,0] = 0
@@ -160,6 +167,5 @@ image = cv2.imread(filename)
 #image[:,:,2] = 0
 #show_image(image,"normal")
 detect_optical_disc(image)
-
 cv2.waitKey(0)
 cv2.destroyAllWindows()
