@@ -177,9 +177,7 @@ class RRO_thresholding:
     def calculate(self,img):
 
         rows, cols = img.shape
-        rows = 8
-
-
+        
         #start in 3 for evite problem with the limits
         for i in range(3,rows-3):
             print("fila",i)
