@@ -1,44 +1,57 @@
 import math
+import numpy as np
 
 class RRO:
-    uyxi = []
-    uxyi = []
-    vx = 0
-    vy = 0
+
     def calculate(self,X,Y):
         #X = sorted(X)
         #Y = sorted(Y)
         m = len(X)
         n = len(Y)
         #U(Y,Xi)
-
+        #print(m,n)
+        uyxi = np.array([])
+        uxyi = np.array([])
+        vx = 0
+        vy = 0
+        tmp = []
         for i in range(0,m):
-            self.uyxi.append(self.lower_values(X[i],Y))
+            tmp.append(self.lower_values(X[i],Y))
 
+        uyxi = np.append(uyxi,tmp)
         #U(X,Yi)
 
-        for i in range(0,n):
-            self.uxyi.append(self.lower_values(Y[i],X))
 
+        tmp = []
+        for i in range(0,n):
+            tmp.append(self.lower_values(Y[i],X))
+
+        uxyi = np.append(uxyi,tmp)
         #U(Y,X)
-        uyx = self.mean(self.uyxi)
+        uyx = self.mean(uyxi)
         #print("uyx",uyx)
         #U(X,Y)
-        uxy = self.mean(self.uxyi)
+        uxy = self.mean(uxyi)
 
         #print(uyx,uxy)
+        uyx_numpy = np.full((1, m), uyx, dtype=float)
+        uxy_numpy = np.full((1, n), uxy, dtype=float)
+        #print("m ",m, "uyxi ", uyxi.size)
+        #print(uyxi.size,uyx_numpy.size)
 
-
+        vx = np.sum (np.power(uyxi - uyx_numpy,2))
+        vy = np.sum (np.power(uxyi - uxy_numpy,2))
         #index
-
+        """
         for i in range(0,m):
-            self.vx += pow(self.uyxi[i] - uyx , 2)
+            vx += pow(uyxi[i] - uyx , 2)
 
         #index
         for i in range(0,n):
-            self.vy += pow(self.uxyi[i] - uxy , 2)
+            vy += pow(uxyi[i] - uxy , 2)
+        """
 
-        U = ((m * uyx) - (n * uxy))/(2 * math.sqrt(self.vx + self.vy + uyx * uxy))
+        U = ((m * uyx) - (n * uxy))/(2 * math.sqrt(vx + vy + uyx * uxy))
 
         #print("U -> ",U)
 
