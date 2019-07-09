@@ -5,8 +5,8 @@ import RRO_thresholding
 import copy
 from sklearn.cluster import KMeans
 
-filename = "images/im0002.ppm"
-#filename = "../dataset_retinas/DRIVE/28_training.tif"
+filename = "images/im0018.ppm"
+#filename = "../dataset_retinas/DRIVE/34_training.tif"
 #problemas
 #filename = "images/im0014.ppm"
 #filename = "images/im0023.ppm"
@@ -177,7 +177,7 @@ def detect_circles(edge_image,veins,g):
             # draw the center of the circle
             cv2.circle(cimage,(i[0],i[1]),2,(0,0,255),3)
 
-        for i in range(0,5):
+        for i in range(0,tamanio):
 
             cv2.circle(cimage,(intensity[i][2][0],intensity[i][2][1]),2,(255,0,0),3)
 
@@ -190,6 +190,8 @@ def detect_circles(edge_image,veins,g):
 
     else:
         print("No se encontro disco optico")
+
+    return max
 
 def detect_veins(image):
     b,g,r = cv2.split(image)
@@ -280,6 +282,19 @@ def detect_veins2(image):
     #show_image(new_image,"erode")
 
     return veins
+def detect_macula(img,optic_disc):
+    x = optic_disc[0]
+    if x>250:
+        x = x - 170
+    else:
+        x = x + 170
+
+    y = optic_disc[1]
+    print("oprio",optic_disc)
+    cv2.circle(img,(x,y),2,(255,0,0),3)
+    cv2.rectangle(img,(x-100,y-100),(x+100,y+100),(0,255,0),3)
+    show_image(img,'macula')
+    #cimage = cv2.cvtColor(edge_image,cv2.COLOR_GRAY2BGR)
 
 def detect_optical_disc(image):
     #original_image = copy.copy(image)
@@ -330,7 +345,8 @@ def detect_optical_disc(image):
     #show_image(new_image,"erode")
     veins = detect_veins(image)
 
-    detect_circles(new_image,veins,g)
+    optic_disc = detect_circles(new_image,veins,g)
+    detect_macula(image,optic_disc)
 
 
 
