@@ -5,7 +5,7 @@ import RRO_thresholding
 import copy
 from sklearn.cluster import KMeans
 
-filename = "images/im0018.ppm"
+filename = "images/im0001.ppm"
 #filename = "../dataset_retinas/DRIVE/34_training.tif"
 #problemas
 #filename = "images/im0014.ppm"
@@ -63,6 +63,18 @@ def threshold(img,t):
     	for j in range(0,cols):
     		if img[i][j]  == t:
     			new_matriz[i][j] = 1
+    return new_matriz
+
+def threshold2(img,t):
+    rows, cols = img.shape
+    new_matriz = np.zeros((rows, cols))
+    #creating binary matrix
+    for i in range(0,rows):
+    	for j in range(0,cols):
+            if img[i][j]  >= t:
+                new_matriz[i][j] = 1
+            else:
+                new_matriz[i][j] = 0
     return new_matriz
 
 def stretch(image):
@@ -295,10 +307,32 @@ def detect_macula(img,optic_disc):
     cv2.rectangle(img,(x-100,y-100),(x+100,y+100),(0,255,0),3)
     show_image(img,'macula')
     #cimage = cv2.cvtColor(edge_image,cv2.COLOR_GRAY2BGR)
+def get_mask(img):
+    b,g,r = cv2.split(img)
+    th = threshold2(r,35)
+    kernel = np.ones((3,3),np.uint8)
+    #openning erosion and dilatation
+    opening = cv2.morphologyEx(th, cv2.MORPH_OPEN, kernel)
+    closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.erode(closing,kernel,iterations = 1)
+    result = apply_mask(img,mask)
+    return result
+
+def apply_mask(img,mask):
+    rows, cols, _ = img.shape
+
+    for i in range(0,rows):
+        for j in range(0,cols):
+            if mask[i][j]==0:
+                img[i][j][0] = 0
+                img[i][j][1] = 0
+                img[i][j][2] = 0
+    return img
 
 def detect_optical_disc(image):
     #original_image = copy.copy(image)
-    #show_image(image,"normal")
+    image = get_mask(image)
+
 
     average = np.average(image)
     print("average",average)
