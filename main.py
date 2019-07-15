@@ -4,9 +4,12 @@ import matplotlib.pyplot as plt
 import RRO_thresholding
 import copy
 from sklearn.cluster import KMeans
-
-filename = "images/im0001.ppm"
-#filename = "../dataset_retinas/DRIVE/34_training.tif"
+template1 = "../dataset_retinas/template/od1.png"
+template2 = "../dataset_retinas/template/od2.png"
+template3 = "../dataset_retinas/template/od3.png"
+template4 = "../dataset_retinas/template/od4.png"
+filename = "images/im0004.ppm"
+#filename = "../dataset_retinas/DRIVE/01_test.tif"
 #problemas
 #filename = "images/im0014.ppm"
 #filename = "images/im0023.ppm"
@@ -329,31 +332,147 @@ def apply_mask(img,mask):
                 img[i][j][2] = 0
     return img
 
+def aux_template_optic_disc(template):
+    image = cv2.imread(template)
+    image_filtered = cv2.medianBlur(image,5)
+    show_image(image_filtered,"verde")
+    blue_hist = cv2.calcHist([image], [0], None, [256], [0, 256])
+    green_hist = cv2.calcHist([image], [1], None, [256], [0, 256])
+    red_hist = cv2.calcHist([image], [2], None, [256], [0, 256])
+    """
+    plt.plot(blue_hist)
+    plt.plot(green_hist)
+    plt.plot(red_hist)
+    plt.xlim([0, 256])
+    plt.show()
+    """
+    return [blue_hist,green_hist,red_hist]
+
+
+def template_optic_disc():
+    hist1 = aux_template_optic_disc(template1)
+    hist2 = aux_template_optic_disc(template2)
+    hist3 = aux_template_optic_disc(template3)
+    hist4 = aux_template_optic_disc(template4)
+
+    blue_hist = []
+    for i in range(0,256):
+        blue_hist.append((hist1[0][i] + hist2[0][i] + hist3[0][i] + hist4[0][i])/4)
+
+    green_hist = []
+    for i in range(0,256):
+        green_hist.append((hist1[1][i] + hist2[1][i]+ hist3[1][i] + hist4[1][i])/4)
+
+    red_hist = []
+    for i in range(0,256):
+        red_hist.append((hist1[2][i] + hist2[2][i] + hist3[2][i] + hist4[2][i])/4)
+    """
+    plt.plot(blue_hist)
+    plt.plot(green_hist)
+    plt.xlim([0, 256])
+    plt.show()
+    """
+    return [blue_hist,green_hist,red_hist]
+
+def hist_window(img,x,y):
+    rows, cols,_ = img.shape
+    #window 80x80
+    img_window = np.zeros((80, 80,3),np.uint8)
+    a = 0
+    b = 0
+    for i in range(y-40,y+40):
+        for j in range(x-40,x+40):
+            img_window[a][b] = img[i][j] #[img[i][j][0],img[i][j][1],img[i][j][2]]
+            b += 1
+        b = 0
+        a += 1
+
+
+
+    #img_window = np.asarray(img_window)
+    show_image(img_window,"80x80")
+    blue_hist = cv2.calcHist([img_window], [0], None, [256], [0, 256])
+    green_hist = cv2.calcHist([img_window], [1], None, [256], [0, 256])
+    red_hist = cv2.calcHist([img_window], [2], None, [256], [0, 256])
+    return [blue_hist,green_hist,red_hist]
+
+def hist_correlation(templates_histograms,histograms_window):
+    diffence_histograms_b = 0
+    diffence_histograms_g = 0
+    diffence_histograms_r = 0
+    for i in range(0,256):
+        diffence_histograms_b += pow(templates_histograms[0][i] - histograms_window[0][i],2)
+        diffence_histograms_g += pow(templates_histograms[1][i] - histograms_window[1][i],2)
+        diffence_histograms_r += pow(templates_histograms[2][i] - histograms_window[2][i],2)
+
+    Cb = 1/(1+diffence_histograms_b)
+    Cg = 1/(1+diffence_histograms_g)
+    Cr = 1/(1+diffence_histograms_r)
+    Tb = 1
+    Tg = 2
+    Tr = 0.5
+    C = (Tr * Cr) + Tb * Cb * Tg * Cg
+    return C
+
+
+
 def detect_optical_disc(image):
     #original_image = copy.copy(image)
     image = get_mask(image)
 
+    templates_histograms = template_optic_disc()
 
     average = np.average(image)
     print("average",average)
 
-
-
     b,g,r = cv2.split(image)
-    show_image(g,"verde")
-    show_image(r,"red")
+    image = cv2.medianBlur(image,5)
+
+    rows, cols, _ = image.shape
+    hist_window(image,406,189)
+
+    correlations = []
+    """
+    for i in range(40,rows-40):
+        print(i)
+        for j in range(40,cols-40):
+            if image[i][j][0] == 0:
+                break
+
+            window_histogram = hist_window(image,i,j)
+            correlations.append([i,j,float(hist_correlation(templates_histograms,window_histogram))])
+            #plt.plot(hist[0])
+            #plt.xlim([0, 256])
+            #plt.show()
+    max = correlations[0]
+    for i in range(1,len(correlations)):
+        if correlations[i] > max:
+            max = correlations[i]
+
+    print("max",max)
+    """
+
+    """
+    plt.plot(hist[0])
+    plt.plot(hist[1])
+    plt.plot(hist[2])
+    plt.xlim([0, 256])
+    plt.show()
+    """
+
+
     # create a CLAHE object (Arguments are optional).
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
-    new_image = clahe.apply(g)
-    show_image(new_image,"clahe")
+    #clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
+    #new_image = clahe.apply(g)
+    #show_image(new_image,"clahe")
 
 
     #new_image = cv2.blur(new_image,(15,15))
     #new_image = cv2.bilateralFilter(new_image,15,75,75)
-    new_image = cv2.medianBlur(new_image,15)
+    #new_image = cv2.medianBlur(new_image,15)
 
     #new_image = cv2.GaussianBlur(new_image,(55,55),0)
-    show_image(new_image,"borrosa")
+    #show_image(new_image,"borrosa")
 
     #dark_pixel = removing_dark_pixel(new_image)
     #show_image(new_image,"removing removing_dark_pixel")
@@ -364,7 +483,7 @@ def detect_optical_disc(image):
 
     #new_image = cv2.Canny(g,100,100)
     #ret,new_image = cv2.threshold(g, 0, 255, cv2.THRESH_OTSU)
-    new_image = sobel(new_image)
+    #new_image = sobel(new_image)
 
     #new_image = cv2.adaptiveThreshold(new_image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,2)
 
@@ -373,14 +492,14 @@ def detect_optical_disc(image):
 
     #new_image = cv2.GaussianBlur(new_image,(3,3),0)
     #show_image(new_image,"x")
-    new_image = cv2.dilate(new_image, None, iterations=1)
-    show_image(new_image,"dilate")
+    #new_image = cv2.dilate(new_image, None, iterations=1)
+    #show_image(new_image,"dilate")
     #new_image = cv2.erode(new_image, None, iterations=1)
     #show_image(new_image,"erode")
-    veins = detect_veins(image)
+    #veins = detect_veins(image)
 
-    optic_disc = detect_circles(new_image,veins,g)
-    detect_macula(image,optic_disc)
+    #optic_disc = detect_circles(new_image,veins,g)
+    #detect_macula(image,optic_disc)
 
 
 
