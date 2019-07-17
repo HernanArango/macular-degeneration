@@ -4,12 +4,13 @@ import matplotlib.pyplot as plt
 import RRO_thresholding
 import copy
 from sklearn.cluster import KMeans
+import time
 template1 = "../dataset_retinas/template/od1.png"
 template2 = "../dataset_retinas/template/od2.png"
 template3 = "../dataset_retinas/template/od3.png"
 template4 = "../dataset_retinas/template/od4.png"
-filename = "images/im0004.ppm"
-#filename = "../dataset_retinas/DRIVE/01_test.tif"
+#filename = "images/im0010.ppm"
+filename = "../dataset_retinas/DRIVE/01_test.tif"
 #problemas
 #filename = "images/im0014.ppm"
 #filename = "images/im0023.ppm"
@@ -335,7 +336,7 @@ def apply_mask(img,mask):
 def aux_template_optic_disc(template):
     image = cv2.imread(template)
     image_filtered = cv2.medianBlur(image,5)
-    show_image(image_filtered,"verde")
+    #show_image(image_filtered,"verde")
     blue_hist = cv2.calcHist([image], [0], None, [256], [0, 256])
     green_hist = cv2.calcHist([image], [1], None, [256], [0, 256])
     red_hist = cv2.calcHist([image], [2], None, [256], [0, 256])
@@ -374,83 +375,118 @@ def template_optic_disc():
     """
     return [blue_hist,green_hist,red_hist]
 
-def hist_window(img,x,y):
+def hist_window(img,y,x):
+    """
     rows, cols,_ = img.shape
     #window 80x80
     img_window = np.zeros((80, 80,3),np.uint8)
     a = 0
     b = 0
+
     for i in range(y-40,y+40):
         for j in range(x-40,x+40):
-            img_window[a][b] = img[i][j] #[img[i][j][0],img[i][j][1],img[i][j][2]]
+            #print(i,j)
+            img_window[a][b] = img[i][j]
             b += 1
         b = 0
         a += 1
-
-
+    """
+    img_window = image[(y-40):(y+40), (x-40):(x+40)]
 
     #img_window = np.asarray(img_window)
-    show_image(img_window,"80x80")
+    #show_image(img_window,"80x80")
     blue_hist = cv2.calcHist([img_window], [0], None, [256], [0, 256])
     green_hist = cv2.calcHist([img_window], [1], None, [256], [0, 256])
     red_hist = cv2.calcHist([img_window], [2], None, [256], [0, 256])
     return [blue_hist,green_hist,red_hist]
 
+
 def hist_correlation(templates_histograms,histograms_window):
+    """
     diffence_histograms_b = 0
     diffence_histograms_g = 0
     diffence_histograms_r = 0
+
     for i in range(0,256):
         diffence_histograms_b += pow(templates_histograms[0][i] - histograms_window[0][i],2)
         diffence_histograms_g += pow(templates_histograms[1][i] - histograms_window[1][i],2)
         diffence_histograms_r += pow(templates_histograms[2][i] - histograms_window[2][i],2)
 
-    Cb = 1/(1+diffence_histograms_b)
-    Cg = 1/(1+diffence_histograms_g)
-    Cr = 1/(1+diffence_histograms_r)
+    """
+
+
+    difference_histograms_b = np.sum(pow(templates_histograms[0] - histograms_window[0],2))
+    difference_histograms_g = np.sum(pow(templates_histograms[1] - histograms_window[1],2))
+    difference_histograms_r = np.sum(pow(templates_histograms[2] - histograms_window[2],2))
+
+
+
+
+    Cb = 1/(1+difference_histograms_b)
+    Cg = 1/(1+difference_histograms_g)
+    Cr = 1/(1+difference_histograms_r)
     Tb = 1
     Tg = 2
     Tr = 0.5
-    C = (Tr * Cr) + Tb * Cb * Tg * Cg
+
+    #print(diffence_histograms_b)
+    C = (Tr * Cr) + (Tb * Cb) + (Tg * Cg)
+    #print("C",C[0])
     return C
 
 
 
 def detect_optical_disc(image):
+    start = time.time()
+    print("mask")
     #original_image = copy.copy(image)
     image = get_mask(image)
-
+    show_image(image,"normal")
+    print("template")
     templates_histograms = template_optic_disc()
 
-    average = np.average(image)
-    print("average",average)
+    #average = np.average(image)
+    #print("average",average)
 
     b,g,r = cv2.split(image)
     image = cv2.medianBlur(image,5)
 
     rows, cols, _ = image.shape
-    hist_window(image,406,189)
+
+    #window_histogram = hist_window(image,500,200)
+    #hist_correlation(templates_histograms,window_histogram)
+
 
     correlations = []
-    """
-    for i in range(40,rows-40):
+    new_matriz = np.zeros((rows, cols))
+    print(rows,cols)
+    for i in range(200,rows-200):
         print(i)
         for j in range(40,cols-40):
             if image[i][j][0] == 0:
                 break
-
+            #print("j",j)
             window_histogram = hist_window(image,i,j)
-            correlations.append([i,j,float(hist_correlation(templates_histograms,window_histogram))])
+            new_matriz[i][j] = hist_correlation(templates_histograms,window_histogram)
+
             #plt.plot(hist[0])
             #plt.xlim([0, 256])
             #plt.show()
-    max = correlations[0]
-    for i in range(1,len(correlations)):
-        if correlations[i] > max:
-            max = correlations[i]
+
+    print("calculando el max")
+    max = new_matriz[0][0]
+    for i in range(0,rows):
+        for j in range(0,cols):
+            if new_matriz[i][j] > max:
+                max = new_matriz[i][j]
 
     print("max",max)
-    """
+    print("threshold")
+    final = threshold2(new_matriz,max*0.5)
+    end = time.time()
+    print(end - start)
+    show_image(final,"final")
+
 
     """
     plt.plot(hist[0])
