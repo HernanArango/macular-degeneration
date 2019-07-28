@@ -9,8 +9,8 @@ template1 = "../dataset_retinas/template/od1.png"
 template2 = "../dataset_retinas/template/od2.png"
 template3 = "../dataset_retinas/template/od3.png"
 template4 = "../dataset_retinas/template/od4.png"
-#filename = "images/im0010.ppm"
-filename = "../dataset_retinas/DRIVE/01_test.tif"
+filename = "images/im0009.ppm"
+#filename = "../dataset_retinas/DRIVE/02_test.tif"
 #problemas
 #filename = "images/im0014.ppm"
 #filename = "images/im0023.ppm"
@@ -305,11 +305,23 @@ def detect_macula(img,optic_disc):
     else:
         x = x + 170
 
-    y = optic_disc[1]
+    y = optic_disc[1] + 30
     print("oprio",optic_disc)
     cv2.circle(img,(x,y),2,(255,0,0),3)
     cv2.rectangle(img,(x-100,y-100),(x+100,y+100),(0,255,0),3)
     show_image(img,'macula')
+    """
+    new_image = img[(x-80):(x+120), (y-120):(y+80)]
+    show_image(new_image,'pequeña macula')
+    b,g,r = cv2.split(new_image)
+    average = np.average(g)
+    show_image(g,'cmaculin')
+    imf = threshold2(g,average)
+    kernel = np.ones((6,6),np.uint8)
+    imf = cv2.dilate(imf,kernel,iterations=5)
+    show_image(imf,'maculin')
+    """
+
     #cimage = cv2.cvtColor(edge_image,cv2.COLOR_GRAY2BGR)
 def get_mask(img):
     b,g,r = cv2.split(img)
@@ -376,21 +388,7 @@ def template_optic_disc():
     return [blue_hist,green_hist,red_hist]
 
 def hist_window(img,y,x):
-    """
-    rows, cols,_ = img.shape
-    #window 80x80
-    img_window = np.zeros((80, 80,3),np.uint8)
-    a = 0
-    b = 0
 
-    for i in range(y-40,y+40):
-        for j in range(x-40,x+40):
-            #print(i,j)
-            img_window[a][b] = img[i][j]
-            b += 1
-        b = 0
-        a += 1
-    """
     img_window = image[(y-40):(y+40), (x-40):(x+40)]
 
     #img_window = np.asarray(img_window)
@@ -402,17 +400,7 @@ def hist_window(img,y,x):
 
 
 def hist_correlation(templates_histograms,histograms_window):
-    """
-    diffence_histograms_b = 0
-    diffence_histograms_g = 0
-    diffence_histograms_r = 0
 
-    for i in range(0,256):
-        diffence_histograms_b += pow(templates_histograms[0][i] - histograms_window[0][i],2)
-        diffence_histograms_g += pow(templates_histograms[1][i] - histograms_window[1][i],2)
-        diffence_histograms_r += pow(templates_histograms[2][i] - histograms_window[2][i],2)
-
-    """
 
 
     difference_histograms_b = np.sum(pow(templates_histograms[0] - histograms_window[0],2))
@@ -437,9 +425,10 @@ def hist_correlation(templates_histograms,histograms_window):
 
 
 def detect_optical_disc(image):
+
     start = time.time()
     print("mask")
-    #original_image = copy.copy(image)
+    original_image = copy.copy(image)
     image = get_mask(image)
     show_image(image,"normal")
     print("template")
@@ -482,19 +471,47 @@ def detect_optical_disc(image):
 
     print("max",max)
     print("threshold")
-    final = threshold2(new_matriz,max*0.5)
+    final = threshold2(new_matriz,max*0.7)
     end = time.time()
     print(end - start)
+    kernel = np.ones((3,3),np.uint8)
     show_image(final,"final")
+    gradient = cv2.morphologyEx(final, cv2.MORPH_GRADIENT, kernel)
+    show_image(gradient,"gradient")
 
+    #calulating the center of optic disc
+    x_min = 0
+    y_min = 0
+    x_max = 0
+    y_max = 0
+    for i in range(0,rows):
+        for j in range(0,cols):
+            #only enter one time
+            if gradient[i][j] == 1 and y_max == 0:
+                print("entro")
+                y_min = i
+                x_min = j
+                x_max = j
+            if gradient[i][j] == 1:
+                y_max = i
 
-    """
-    plt.plot(hist[0])
-    plt.plot(hist[1])
-    plt.plot(hist[2])
-    plt.xlim([0, 256])
-    plt.show()
-    """
+                if x_min > j:
+                    x_min = j
+                elif x_max < j:
+                    x_max = j
+
+    print(x_min,x_max,y_min,y_max)
+    y = int(y_min + ((y_max - y_min)/2))
+    x = int(x_min + ((x_max - x_min)/2))
+    print(x,y)
+
+    #x = 142
+    #y = 227
+    cv2.circle(image,(x,y),2,(255,0,0),3)
+    show_image(image,'circles')
+    detect_macula(image,[x,y])
+
+    
 
 
     # create a CLAHE object (Arguments are optional).
