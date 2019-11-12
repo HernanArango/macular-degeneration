@@ -15,7 +15,7 @@ template1 = "../dataset_retinas/template/od1.png"
 template2 = "../dataset_retinas/template/od2.png"
 template3 = "../dataset_retinas/template/od3.png"
 template4 = "../dataset_retinas/template/od4.png"
-filename = "images/drusas2.jpg"
+filename = "images/drusasx.jpg"
 
 
 # filename = "../dataset_retinas/DRIVE/02_test.tif"
@@ -303,12 +303,17 @@ def detect_veins2(image):
 
 
 def detect_roi(img, optic_disc):
+    rows, cols, _ = img.shape
     x = optic_disc[0]
+    distance = int(rows*0.35)
+    middle_image = int(cols/2)
     # detect if the macula is to the left or right
-    if x > 250:
-        x = x - 170
+    if x > middle_image:
+        #x = x - 170
+        x = x - distance
     else:
-        x = x + 170
+        #x = x + 170
+        x = x + distance
 
     y = optic_disc[1] + 30
     print(x, y)
@@ -436,7 +441,7 @@ def detect_drusas(img):
     show_image(fundus,"gaussian blur")
     g = cv2.GaussianBlur(g,(7,7),0,0,cv2.BORDER_DEFAULT)
     show_image(g,"g2")
-    x= (fundus/g)*1.09
+    x = (fundus/g)*1.09
     new_image = (x*255).astype(np.uint8)
     show_image(new_image,"resultado")
 
@@ -698,8 +703,9 @@ b, g, r = cv2.split(image)
 # red
 # image[:,:,2] = 0
 # show_image(image,"normal")
-detect_optical_disc(image)
-#image = cv2.medianBlur(image, 5)
-#detect_roi(image, [173, 335])
+#detect_optical_disc(image)
+image = cv2.medianBlur(image, 5)
+x = detect_roi(image, [173, 335])
+detect_drusas(x)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
