@@ -15,7 +15,7 @@ template1 = "../dataset_retinas/template/od1.png"
 template2 = "../dataset_retinas/template/od2.png"
 template3 = "../dataset_retinas/template/od3.png"
 template4 = "../dataset_retinas/template/od4.png"
-filename = "images/drusasx.jpg"
+filename = "images/1.jpg"
 
 
 # filename = "../dataset_retinas/DRIVE/02_test.tif"
@@ -307,25 +307,31 @@ def detect_roi(img, optic_disc):
     x = optic_disc[0]
     distance = int(rows*0.35)
     middle_image = int(cols/2)
+
+    translate_rect = 0
     # detect if the macula is to the left or right
     if x > middle_image:
         #x = x - 170
         x = x - distance
+        translate_rect = -70
     else:
         #x = x + 170
         x = x + distance
+        translate_rect = 70
 
     y = optic_disc[1] + 30
     print(x, y)
     print("oprio", optic_disc)
-    # cv2.circle(img, (x, y), 2, (255, 0, 0), 3)
-    # cv2.rectangle(img, (x - 100, y - 100), (x + 100, y + 100), (0, 255, 0), 3)
+    #cv2.circle(img, (x, y), 2, (255, 0, 0), 3)
 
-    roi = img[y - 100:y + 100, x - 100:x + 100]
+    #cv2.rectangle(img, (x - 200 +translate_rect, y - 150), (x + 200 + translate_rect, y + 150), (0, 255, 0), 3)
+
+    #roi = img[y - 100:y + 100, x - 100:x + 100]
+    roi = img[y - 150:y + 150, x - 200+translate_rect:x + 200+translate_rect]
     print(x, y)
 
-    # show_image(new_image, 'pequena macula')
-    #detect_drusas(roi)
+    show_image(img, 'pequena macula')
+
     return roi
 
 def get_mask(img):
@@ -438,9 +444,11 @@ def detect_drusas(img):
 
 
     fundus = cv2.GaussianBlur(g,(51,51),100.0,100.0,cv2.BORDER_DEFAULT)
+    #fundus = cv2.GaussianBlur(g,(91,91),100.0,100.0,cv2.BORDER_DEFAULT)
     show_image(fundus,"gaussian blur")
     g = cv2.GaussianBlur(g,(7,7),0,0,cv2.BORDER_DEFAULT)
     show_image(g,"g2")
+    #x = (fundus/g)*1.09
     x = (fundus/g)*1.09
     new_image = (x*255).astype(np.uint8)
     show_image(new_image,"resultado")
@@ -570,18 +578,14 @@ def detect_optical_disc(image):
     correlations = []
     new_matriz = np.zeros((rows, cols))
     print(rows, cols)
-    for i in range(200, rows - 200):
+    for i in range(200, rows-200):
         print(i)
-        for j in range(40, cols - 40):
-            if image[i][j][0] == 0:
-                break
-            # print("j",j)
-            window_histogram = hist_window(image, i, j)
-            new_matriz[i][j] = hist_correlation(templates_histograms, window_histogram)
+        for j in range(0, cols):
 
-            # plt.plot(hist[0])
-            # plt.xlim([0, 256])
-            # plt.show()
+
+            if image[i][j][0] != 0:
+                window_histogram = hist_window(image, i, j)
+                new_matriz[i][j] = hist_correlation(templates_histograms, window_histogram)
 
     print("calculando el max")
     max = new_matriz[0][0]
@@ -692,9 +696,13 @@ def detect_optical_disc(image):
     # histogram(transformacion)
     # show_image(transformacion,"transformacion")
 
+def change_resolution(img):
+    img = imutils.resize(img, width=800)
+    cv2.imwrite('01.png',img)
+    return img
 
 image = cv2.imread(filename)
-b, g, r = cv2.split(image)
+#b, g, r = cv2.split(image)
 
 # blue
 # image[:,:,0] = 0
@@ -703,9 +711,10 @@ b, g, r = cv2.split(image)
 # red
 # image[:,:,2] = 0
 # show_image(image,"normal")
+image = change_resolution(image)
 #detect_optical_disc(image)
-image = cv2.medianBlur(image, 5)
-x = detect_roi(image, [173, 335])
+
+x = detect_roi(image, [130, 268])
 detect_drusas(x)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
