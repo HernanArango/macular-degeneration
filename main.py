@@ -712,9 +712,9 @@ image = cv2.imread(filename)
 # image[:,:,2] = 0
 # show_image(image,"normal")
 image = change_resolution(image)
-#detect_optical_disc(image)
+detect_optical_disc(image)
 
-x = detect_roi(image, [130, 268])
-detect_drusas(x)
+#x = detect_roi(image, [130, 268])
+#detect_drusas(x)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
