@@ -330,7 +330,7 @@ def detect_roi(img, optic_disc):
     roi = img[y - 150:y + 150, x - 200+translate_rect:x + 200+translate_rect]
     print(x, y)
 
-    show_image(img, 'pequena macula')
+    #show_image(img, 'pequena macula')
 
     return roi
 
@@ -435,15 +435,9 @@ def detect_drusas(img):
 
     b, g, r = cv2.split(img)
     show_image(g, "green")
-
-
-
-    #g = cv2.morphologyEx(g, cv2.MORPH_CLOSE, kernel)
-
-
-
-
-    fundus = cv2.GaussianBlur(g,(51,51),100.0,100.0,cv2.BORDER_DEFAULT)
+    fundus = cv2.medianBlur(g, 41)
+    #show_image(g,"mediana")
+    #fundus = cv2.GaussianBlur(g,(51,51),100.0,100.0,cv2.BORDER_DEFAULT)
     #fundus = cv2.GaussianBlur(g,(91,91),100.0,100.0,cv2.BORDER_DEFAULT)
     show_image(fundus,"gaussian blur")
     g = cv2.GaussianBlur(g,(7,7),0,0,cv2.BORDER_DEFAULT)
@@ -457,6 +451,12 @@ def detect_drusas(img):
     ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
     show_image(otsu_img, "otsu")
 
+    #prueba
+    """
+    x = detect_veins(img)
+    otsu_img = (otsu_img/x).astype(np.uint8)
+    show_image(otsu_img,"aaaa")
+    """
 
     contours,_ = cv2.findContours(otsu_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -696,6 +696,26 @@ def detect_optical_disc(image):
     # histogram(transformacion)
     # show_image(transformacion,"transformacion")
 
+def detect_veins3(img):
+    b, g, r = cv2.split(img)
+
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
+    gray = clahe.apply(g)
+    #image_filtered = cv2.medianBlur(gray, 5)
+    image_filtered = cv2.GaussianBlur(gray,(21,21),0)
+    th2 = cv2.adaptiveThreshold(image_filtered,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
+            cv2.THRESH_BINARY,11,2)
+    show_image(th2,"hola")
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    dilate = cv2.dilate(th2, kernel)
+    #dilate = cv2.morphologyEx(dilate, cv2.MORPH_CLOSE, kernel)
+    show_image(dilate,"hola")
+
+    final = g/dilate
+    show_image(final,"final")
+
+    return final
+
 def change_resolution(img):
     img = imutils.resize(img, width=800)
     cv2.imwrite('01.png',img)
@@ -715,6 +735,7 @@ image = change_resolution(image)
 #detect_optical_disc(image)
 
 x = detect_roi(image, [130, 268])
+#detect_veins(x)
 detect_drusas(x)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
