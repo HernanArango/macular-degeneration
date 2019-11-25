@@ -15,7 +15,7 @@ template1 = "../dataset_retinas/template/od1.png"
 template2 = "../dataset_retinas/template/od2.png"
 template3 = "../dataset_retinas/template/od3.png"
 template4 = "../dataset_retinas/template/od4.png"
-filename = "images/1.jpg"
+filename = "images/2.jpg"
 
 
 # filename = "../dataset_retinas/DRIVE/02_test.tif"
@@ -452,11 +452,11 @@ def detect_drusas(img):
     show_image(otsu_img, "otsu")
 
     #prueba
-    """
-    x = detect_veins(img)
+
+    x = detect_veins3(img)
     otsu_img = (otsu_img/x).astype(np.uint8)
     show_image(otsu_img,"aaaa")
-    """
+
 
     contours,_ = cv2.findContours(otsu_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -706,7 +706,7 @@ def detect_veins3(img):
     th2 = cv2.adaptiveThreshold(image_filtered,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
             cv2.THRESH_BINARY,11,2)
     show_image(th2,"hola")
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 1))
     dilate = cv2.dilate(th2, kernel)
     #dilate = cv2.morphologyEx(dilate, cv2.MORPH_CLOSE, kernel)
     show_image(dilate,"hola")
@@ -717,7 +717,7 @@ def detect_veins3(img):
     return final
 
 def change_resolution(img):
-    img = imutils.resize(img, width=800)
+    img = imutils.resize(img, width=700)
     cv2.imwrite('01.png',img)
     return img
 
@@ -730,12 +730,12 @@ image = cv2.imread(filename)
 # image[:,:,1] = 0
 # red
 # image[:,:,2] = 0
-# show_image(image,"normal")
 image = change_resolution(image)
+show_image(image,"normal")
 #detect_optical_disc(image)
 
-x = detect_roi(image, [130, 268])
+#x = detect_roi(image, [130, 268])
 #detect_veins(x)
-detect_drusas(x)
+#detect_drusas(x)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
