@@ -15,15 +15,8 @@ template1 = "../dataset_retinas/template/od1.png"
 template2 = "../dataset_retinas/template/od2.png"
 template3 = "../dataset_retinas/template/od3.png"
 template4 = "../dataset_retinas/template/od4.png"
-filename = "images/1.jpg"
+filename = "../dataset_retinas/clinicaoftalmologica/8.jpg"
 
-
-# filename = "../dataset_retinas/DRIVE/02_test.tif"
-# problemas
-# filename = "images/im0014.ppm"
-# filename = "images/im0023.ppm"
-# filename = "images/im0015.ppm"
-# filename = "images/im0037.ppm"
 
 def show_image(image, tittle):
     cv2.imshow(tittle, image)
@@ -35,7 +28,7 @@ def histogram(image):
     # channel 1 -> green
     hist = cv2.calcHist([image], [1], None, [256], [0, 256])
     max_value = np.argmin(hist)
-    prueba(image, max_value)
+
     plt.plot(hist)
     plt.xlim([0, 256])
     plt.show()
@@ -304,33 +297,39 @@ def detect_veins2(image):
 
 def detect_roi(img, optic_disc):
     rows, cols, _ = img.shape
+    print("rows",rows,"cols",cols)
     x = optic_disc[0]
-    distance = int(rows*0.35)
+    y = optic_disc[1]
+    distance = int(cols*0.35)
     middle_image = int(cols/2)
 
+    cv2.circle(img, (x, y), 2, (0, 255, 0), 3)
     translate_rect = 0
     # detect if the macula is to the left or right
+    #right
     if x > middle_image:
-        #x = x - 170
+
         x = x - distance
-        translate_rect = -70
+        translate_rect = 0#-70
+    #left
     else:
-        #x = x + 170
+
         x = x + distance
         translate_rect = 70
 
-    y = optic_disc[1] + 30
+    #y = optic_disc[1] + 30
     print(x, y)
     print("oprio", optic_disc)
-    #cv2.circle(img, (x, y), 2, (255, 0, 0), 3)
+    cv2.circle(img, (x, y), 2, (255, 0, 0), 3)
+    show_image(img,"puntos")
 
     #cv2.rectangle(img, (x - 200 +translate_rect, y - 150), (x + 200 + translate_rect, y + 150), (0, 255, 0), 3)
 
     #roi = img[y - 100:y + 100, x - 100:x + 100]
-    roi = img[y - 150:y + 150, x - 200+translate_rect:x + 200+translate_rect]
-    print(x, y)
+    print(x - 200+translate_rect)
+    roi = img[y - 150:y + 150, (x - 200)+translate_rect:(x + 200)+translate_rect]
 
-    show_image(img, 'pequena macula')
+    #show_image(img, 'pequena macula')
 
     return roi
 
@@ -372,6 +371,7 @@ def aux_template_optic_disc(template):
     plt.xlim([0, 256])
     plt.show()
     """
+
     return [blue_hist, green_hist, red_hist]
 
 
@@ -395,6 +395,7 @@ def template_optic_disc():
     """
     plt.plot(blue_hist)
     plt.plot(green_hist)
+    plt.plot(red_hist)
     plt.xlim([0, 256])
     plt.show()
     """
@@ -435,15 +436,9 @@ def detect_drusas(img):
 
     b, g, r = cv2.split(img)
     show_image(g, "green")
-
-
-
-    #g = cv2.morphologyEx(g, cv2.MORPH_CLOSE, kernel)
-
-
-
-
-    fundus = cv2.GaussianBlur(g,(51,51),100.0,100.0,cv2.BORDER_DEFAULT)
+    fundus = cv2.medianBlur(g, 41)
+    #show_image(g,"mediana")
+    #fundus = cv2.GaussianBlur(g,(51,51),100.0,100.0,cv2.BORDER_DEFAULT)
     #fundus = cv2.GaussianBlur(g,(91,91),100.0,100.0,cv2.BORDER_DEFAULT)
     show_image(fundus,"gaussian blur")
     g = cv2.GaussianBlur(g,(7,7),0,0,cv2.BORDER_DEFAULT)
@@ -456,6 +451,11 @@ def detect_drusas(img):
     # threshold
     ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
     show_image(otsu_img, "otsu")
+
+
+    x = detect_veins3(img)
+    otsu_img = (otsu_img/x).astype(np.uint8)
+    show_image(otsu_img,"aaaa")
 
 
     contours,_ = cv2.findContours(otsu_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -559,7 +559,7 @@ def detect_optical_disc(image):
     start = time.time()
     print("mask")
     original_image = copy.copy(image)
-    image = get_mask(image)
+    #image = get_mask(image)
     show_image(image, "normal")
     print("template")
     templates_histograms = template_optic_disc()
@@ -600,7 +600,7 @@ def detect_optical_disc(image):
     end = time.time()
     print(end - start)
     kernel = np.ones((3, 3), np.uint8)
-    show_image(image_threshold, "final")
+    show_image(image_threshold, "image threshold")
     # opening = erosion followed by dilation
     gradient = cv2.morphologyEx(image_threshold, cv2.MORPH_GRADIENT, kernel)
     show_image(gradient, "gradient")
@@ -634,8 +634,8 @@ def detect_optical_disc(image):
     # y = 227
     cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
     show_image(image, 'circles')
-    roi = detect_roi(image, [x, y])
-    detect_drusas(roi)
+    return [x,y]
+
 
     # create a CLAHE object (Arguments are optional).
     # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
@@ -696,9 +696,28 @@ def detect_optical_disc(image):
     # histogram(transformacion)
     # show_image(transformacion,"transformacion")
 
+def detect_veins3(img):
+    b, g, r = cv2.split(img)
+
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
+    gray = clahe.apply(g)
+    #image_filtered = cv2.medianBlur(gray, 1)
+    image_filtered = cv2.GaussianBlur(gray,(21,21),0)
+    th2 = cv2.adaptiveThreshold(image_filtered,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
+            cv2.THRESH_BINARY,11,2)
+    show_image(th2,"hola")
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 1))
+    dilate = cv2.dilate(th2, kernel)
+    #dilate = cv2.morphologyEx(dilate, cv2.MORPH_CLOSE, kernel)
+    show_image(dilate,"hola2")
+    """
+    final = g/dilate
+    show_image(final,"final")
+    """
+    return dilate #final
+
 def change_resolution(img):
-    img = imutils.resize(img, width=800)
-    cv2.imwrite('01.png',img)
+    img = imutils.resize(img, width=700)
     return img
 
 image = cv2.imread(filename)
@@ -710,11 +729,19 @@ image = cv2.imread(filename)
 # image[:,:,1] = 0
 # red
 # image[:,:,2] = 0
-# show_image(image,"normal")
 image = change_resolution(image)
-detect_optical_disc(image)
 
-#x = detect_roi(image, [130, 268])
+show_image(image,"normal")
+x,y = detect_optical_disc(image)
+roi = detect_roi(image, [x, y])
+#roi = detect_roi(image, [540, 295])
+
+
+show_image(roi,"roi")
+detect_drusas(roi)
+
+
+#detect_veins(x)
 #detect_drusas(x)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
