@@ -15,8 +15,9 @@ template1 = "../dataset_retinas/template/od1.png"
 template2 = "../dataset_retinas/template/od2.png"
 template3 = "../dataset_retinas/template/od3.png"
 template4 = "../dataset_retinas/template/od4.png"
-filename = "../dataset_retinas/clinicaoftalmologica/8.jpg"
+filename = "../dataset_retinas/clinicaoftalmologica/17.jpg"
 
+classification_scale = {"Normal": 0, "Early": 0,"Intermetiate": 0}
 
 def show_image(image, tittle):
     cv2.imshow(tittle, image)
@@ -35,10 +36,11 @@ def histogram(image):
 
 
 def removing_dark_pixel(image):
-    rows, cols = image.shape
+    b, g, r = cv2.split(image)
+    rows, cols,_ = image.shape
     new_matriz = np.zeros((rows, cols))
     # hist = cv2.calcHist([image], [1], None, [256], [0, 256])
-    average = np.average(image)
+    average = np.average(r)
     max = np.amax(image)
     # average = max - average
 
@@ -49,9 +51,11 @@ def removing_dark_pixel(image):
     total = 0
     for i in range(0, rows):
         for j in range(0, cols):
-            total += image[i][j]
-            if image[i][j] <= average:
-                image[i][j] = 0
+            total += image[i][j][0]
+            if r[i][j] <= average:
+                image[i][j][0] = 0
+                image[i][j][1] = 0
+                image[i][j][2] = 0
 
             # else:
             # image[i][j] = 0
@@ -324,12 +328,14 @@ def detect_roi(img, optic_disc):
     show_image(img,"puntos")
 
     #cv2.rectangle(img, (x - 200 +translate_rect, y - 150), (x + 200 + translate_rect, y + 150), (0, 255, 0), 3)
+    #cv2.rectangle(img, (x - 500 +translate_rect, y - 450), (x + 500 + translate_rect, y + 550), (0, 255, 0), 3)
 
-    #roi = img[y - 100:y + 100, x - 100:x + 100]
+
     print(x - 200+translate_rect)
-    roi = img[y - 150:y + 150, (x - 200)+translate_rect:(x + 200)+translate_rect]
+    #roi = img[y - 150:y + 150, (x - 200)+translate_rect:(x + 200)+translate_rect]
+    roi = img[y - 450:y + 550, (x - 500)+translate_rect:(x + 500)+translate_rect]
 
-    #show_image(img, 'pequena macula')
+    show_image(imutils.resize(img, width=700), 'pequena macula')
 
     return roi
 
@@ -460,88 +466,71 @@ def detect_drusas(img):
 
     contours,_ = cv2.findContours(otsu_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
+
     # dibujar los contornos
     total = 0
     for c in contours:
         cv2.drawContours(img, [c], 0, (0, 255, 0), 2, cv2.LINE_AA)
         total = total + 1
 
+        momentos = cv2.moments(c)
+        if momentos['m10']== 0 or momentos['m00']==0:
+            cx = 0
+        else:
+            cx = int(momentos['m10']/momentos['m00'])
+
+
+        if momentos['m01']== 0 or momentos['m00']==0:
+            cy = 0
+        else:
+            cy = int(momentos['m01']/momentos['m00'])
+
+        #cv2.circle(img,(cx, cy), 3, (0,0,255), -1)
+
+        #size_drusas([cx,cy],momentos)
+        #break
+
+        rect = cv2.minAreaRect(c)
+        box = cv2.boxPoints(rect)
+        box = np.int0(box)
+        im = cv2.drawContours(img,[box],0,(255,0,0),2)
+        size_drusas(rect[1])
+        """
+        cx = int(momentos['m10']/momentos['m00'])
+        cy = int(momentos['m01']/momentos['m00'])
+        #Dibujar el centro
+        cv2.circle(img,(cx, cy), 3, (0,0,255), -1)
+        """
+
     print("total drusas",total)
+
 
     show_image(img,"contornos")
 
-    """
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))
 
-    #g = cv2.morphologyEx(g, cv2.MORPH_CLOSE, kernel)
+def size_drusas(dimensions):
+    diameter = 0
+    #bigest side
+    if dimensions[0] > dimensions[1]:
+        diameter = dimensions[0]
+    else:
+        diameter = dimensions[1]
 
-    equalized_img = cv2.equalizeHist(g)
-    # show_image(equalized_img, "xxxx")
-
-
-
-    #0.75 y 1.25
-    homomorfic_filter = HomomorphicFilter(a=0.75, b=1.25)
-    img_filtered = homomorfic_filter.filter(I=equalized_img, filter_params=[50, 2])
-    show_image(img_filtered, "homomorfic")
-
-    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (23, 23))
-
-    closing_img = cv2.morphologyEx(img_filtered, cv2.MORPH_CLOSE, kernel)
-    show_image(closing_img,"closing:img")
-
-    sobelx = sobel(closing_img)
-    show_image(sobelx, "sobel")
-    ret, otsu_img = cv2.threshold(sobelx, 0, 255, cv2.THRESH_OTSU)
-    show_image(otsu_img, "otsu")
-
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    dilate = cv2.dilate(otsu_img, kernel)
-    show_image(dilate, "dilatation")
+    micron = 3.4
+    # transform diameter in pixel to micron -> 1px = 3.4 micron
+    diameter = diameter * micron
 
 
+    #normal --->   <= 63 micron
+    if diameter <= 63:
+        classification_scale["Normal"] += 1
+    #Early AMD --->  Medium Drusen > 63 micron and <= 125 miron
+    elif diameter > 63 and diameter <= 125:
+        classification_scale["Early"] += 1
+    #Intermetiate AMD --> Large Drusen > 125 micron
+    else:
+        classification_scale["Intermetiate"] += 1
 
-    restax = otsu_img - g
-    show_image(restax, "restax")
-
-    resta = cv2.subtract(dilate, g)
-    show_image(resta, "resta")
-
-    # restax = cv2.erode(resta, None, iterations=1)
-    # show_image(restax, "resta2")
-    #ret, thresh = cv2.threshold(resta, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    #show_image(thresh, "umbral")
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
-    new_image = clahe.apply(resta)
-    show_image(new_image,"clahe")
-
-    prueba = change_background(new_image)
-    show_image(prueba,"prueba")
-    """
-    """
-    Z = prueba.reshape((-1, 1))
-
-    # convert to np.float32
-    Z = np.float32(Z)
-
-    # define criteria, number of clusters(K) and apply kmeans()
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
-    K = 3
-    ret, label, center = cv2.kmeans(Z, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-
-    center = np.uint8(center)
-    res = center[label.flatten()]
-    res2 = res.reshape((prueba.shape))
-    show_image(res2, "kmeans")
-    """
-    #count_drusas(prueba,img,resta)
-
-
-
-
-
-def count_drusas(thresh,image,gray):
-    pass
 
 def change_background(img):
     rows, cols = img.shape
@@ -578,7 +567,7 @@ def detect_optical_disc(image):
     correlations = []
     new_matriz = np.zeros((rows, cols))
     print(rows, cols)
-    for i in range(200, rows-200):
+    for i in range(200, rows-230):
         print(i)
         for j in range(0, cols):
 
@@ -632,8 +621,8 @@ def detect_optical_disc(image):
 
     # x = 142
     # y = 227
-    cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
-    show_image(image, 'circles')
+    #cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
+    #show_image(image, 'circles')
     return [x,y]
 
 
@@ -717,10 +706,27 @@ def detect_veins3(img):
     return dilate #final
 
 def change_resolution(img):
+    """
+    #percent by which the image is resized
+    scale_percent = 50
+    #calculate the 50 percent of original dimensions
+    width = int(img.shape[1] * scale_percent / 100)
+    height = int(img.shape[0] * scale_percent / 100)
+
+    # dsize
+    dsize = (width, height)
+
+    # resize image
+    output = cv2.resize(img, dsize)
+
+    cv2.imwrite('/home/hernan/Escritorio/prueba.png',output)
+    """
     img = imutils.resize(img, width=700)
     return img
 
 image = cv2.imread(filename)
+original_image = copy.copy(image)
+
 #b, g, r = cv2.split(image)
 
 # blue
@@ -731,15 +737,38 @@ image = cv2.imread(filename)
 # image[:,:,2] = 0
 image = change_resolution(image)
 
+cols_original, rows_original, _ = original_image.shape
+cols_modified, rows_modified, _ = image.shape
+# Get the original ratio
+Rx = (rows_original/rows_modified)
+Ry = (cols_original/cols_modified)
+
+print("resultado",Rx,Ry)
+
 show_image(image,"normal")
+
+image = removing_dark_pixel(image)
+#show_image(dark,"dark")
+
 x,y = detect_optical_disc(image)
-roi = detect_roi(image, [x, y])
-#roi = detect_roi(image, [540, 295])
+cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
+show_image(image, 'circles')
+
+cv2.circle(original_image, (round(x*Rx), round(y*Ry)), 2, (255, 0, 0), 3)
+
+show_image(original_image, 'circles2')
+print("OD pequenio",x,y)
+print("OD grande",round(x*Rx),round(y*Ry))
+roi = detect_roi(original_image, [round(x*Rx), round(y*Ry)])
+
+#roi = detect_roi(original_image, [499, 951])
 
 
 show_image(roi,"roi")
+
 detect_drusas(roi)
 
+print(classification_scale)
 
 #detect_veins(x)
 #detect_drusas(x)
