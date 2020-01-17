@@ -15,9 +15,10 @@ template1 = "../dataset_retinas/template/od1.png"
 template2 = "../dataset_retinas/template/od2.png"
 template3 = "../dataset_retinas/template/od3.png"
 template4 = "../dataset_retinas/template/od4.png"
-filename = "../dataset_retinas/clinicaoftalmologica/17.jpg"
+filename = "../dataset_retinas/clinicaoftalmologica/16.jpg"
 
-classification_scale = {"Normal": 0, "Early": 0,"Intermetiate": 0}
+
+classification_scale = {"Normal": 0, "Medium": 0,"Large": 0}
 
 def show_image(image, tittle):
     cv2.imshow(tittle, image)
@@ -304,6 +305,7 @@ def detect_roi(img, optic_disc):
     print("rows",rows,"cols",cols)
     x = optic_disc[0]
     y = optic_disc[1]
+    # distance of optic disc to the macula
     distance = int(cols*0.35)
     middle_image = int(cols/2)
 
@@ -314,7 +316,7 @@ def detect_roi(img, optic_disc):
     if x > middle_image:
 
         x = x - distance
-        translate_rect = 0#-70
+        translate_rect = 0
     #left
     else:
 
@@ -324,11 +326,11 @@ def detect_roi(img, optic_disc):
     #y = optic_disc[1] + 30
     print(x, y)
     print("oprio", optic_disc)
-    cv2.circle(img, (x, y), 2, (255, 0, 0), 3)
+    #cv2.circle(img, (x, y), 35, (0, 255, 0), 100)
     show_image(img,"puntos")
 
-    #cv2.rectangle(img, (x - 200 +translate_rect, y - 150), (x + 200 + translate_rect, y + 150), (0, 255, 0), 3)
-    #cv2.rectangle(img, (x - 500 +translate_rect, y - 450), (x + 500 + translate_rect, y + 550), (0, 255, 0), 3)
+
+    # cv2.rectangle(img, (x - 500 +translate_rect, y - 450), (x + 500 + translate_rect, y + 550), (0, 255, 0), 3)
 
 
     print(x - 200+translate_rect)
@@ -526,10 +528,10 @@ def size_drusas(dimensions):
         classification_scale["Normal"] += 1
     #Early AMD --->  Medium Drusen > 63 micron and <= 125 miron
     elif diameter > 63 and diameter <= 125:
-        classification_scale["Early"] += 1
+        classification_scale["Medium"] += 1
     #Intermetiate AMD --> Large Drusen > 125 micron
     else:
-        classification_scale["Intermetiate"] += 1
+        classification_scale["Large"] += 1
 
 
 def change_background(img):
@@ -623,6 +625,7 @@ def detect_optical_disc(image):
     # y = 227
     #cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
     #show_image(image, 'circles')
+
     return [x,y]
 
 
@@ -748,27 +751,29 @@ print("resultado",Rx,Ry)
 show_image(image,"normal")
 
 image = removing_dark_pixel(image)
-#show_image(dark,"dark")
+show_image(image,"dark")
 
 x,y = detect_optical_disc(image)
 cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
 show_image(image, 'circles')
 
-cv2.circle(original_image, (round(x*Rx), round(y*Ry)), 2, (255, 0, 0), 3)
+#cv2.circle(original_image, (round(x*Rx), round(y*Ry)), 2, (255, 0, 0), 3)
+#cv2.circle(original_image, (round(x*Rx), round(y*Ry)), 35, (255, 0, 0), 100)
 
 show_image(original_image, 'circles2')
 print("OD pequenio",x,y)
 print("OD grande",round(x*Rx),round(y*Ry))
+
+
 roi = detect_roi(original_image, [round(x*Rx), round(y*Ry)])
-
-#roi = detect_roi(original_image, [499, 951])
-
-
 show_image(roi,"roi")
 
 detect_drusas(roi)
+print("Total Normal Drusen (<= 63 micron) : ",classification_scale["Normal"])
+print("Total Medium Drusen (>  63 micron and <= 125 micron) : ",classification_scale["Medium"])
+print("Total Large Drusen  (>  125 micron) : ",classification_scale["Large"])
 
-print(classification_scale)
+# print(classification_scale)
 
 #detect_veins(x)
 #detect_drusas(x)
