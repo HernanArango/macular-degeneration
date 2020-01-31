@@ -1,9 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import RRO_thresholding
 import copy
-from homomorfic_filter import HomomorphicFilter
 from scipy import ndimage
 from skimage.feature import peak_local_max
 from skimage.morphology import watershed
@@ -11,11 +9,12 @@ from sklearn.cluster import KMeans
 import time
 import imutils
 
-template1 = "../dataset_retinas/template/od1.png"
-template2 = "../dataset_retinas/template/od2.png"
-template3 = "../dataset_retinas/template/od3.png"
-template4 = "../dataset_retinas/template/od4.png"
-filename = "../dataset_retinas/clinicaoftalmologica/16.jpg"
+
+template1 = "./templates_od/od1.png"
+template2 = "./templates_od/od2.png"
+template3 = "./templates_od/od3.png"
+template4 = "./templates_od/od4.png"
+
 
 
 classification_scale = {"Normal": 0, "Medium": 0,"Large": 0}
@@ -45,10 +44,10 @@ def removing_dark_pixel(image):
     max = np.amax(image)
     # average = max - average
 
-    print("max", max)
+    # print("max", max)
 
-    print(image[0][1])
-    print("average", average)
+    # print(image[0][1])
+    # print("average", average)
     total = 0
     for i in range(0, rows):
         for j in range(0, cols):
@@ -60,7 +59,7 @@ def removing_dark_pixel(image):
 
             # else:
             # image[i][j] = 0
-    print("average2", total / (rows * cols))
+    # print("average2", total / (rows * cols))
     return image
 
 
@@ -164,7 +163,7 @@ def detect_circles(edge_image, veins, g):
 
     circles = cv2.HoughCircles(edge_image, cv2.HOUGH_GRADIENT, 1, 20,
                                param1=50, param2=30, minRadius=30, maxRadius=90)
-    print(circles)
+    # print(circles)
 
     if circles is not None:
 
@@ -177,7 +176,7 @@ def detect_circles(edge_image, veins, g):
         # count_pixel_posibles_veins(veins,i[0],i[1])
 
         intensity = sort(intensity, 0)
-        print("intensity", intensity)
+        # print("intensity", intensity)
 
         tamanio = 5  # we choose only the 5 first values
         if len(intensity) < tamanio:
@@ -190,7 +189,7 @@ def detect_circles(edge_image, veins, g):
 
         # select only the data of the circle (x y radius)
         max = max[2]
-        print("maximo", max)
+        # print("maximo", max)
 
         for i in circles[0, :]:
             # draw the outer circle
@@ -204,7 +203,7 @@ def detect_circles(edge_image, veins, g):
         cv2.circle(cimage, (max[0], max[1]), max[2], (0, 250, 0), 2)
         cv2.circle(cimage, (max[0], max[1]), 2, (255, 0, 0), 3)
 
-        show_image(cimage, 'detected circles')
+        # show_image(cimage, 'detected circles')
 
     else:
         print("No se encontro disco optico")
@@ -235,13 +234,13 @@ def detect_veins(image):
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
     K = 2
     ret, label, center = cv2.kmeans(Z, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-    print("center", center)
+    # print("center", center)
     # Now convert back into uint8, and make original image
     center = np.uint8(center)
     res = center[label.flatten()]
     res2 = res.reshape((tophat.shape))
     res2 = threshold(res2, center[0])
-    show_image(res2, "kmeans")
+    # show_image(res2, "kmeans")
 
     return res2
 
@@ -292,7 +291,7 @@ def detect_veins2(image):
     # show_image(new_image,"clahe Kirsch")
     veins = threshold(gray, 77)
 
-    show_image(veins, " veins Kirsch")
+    # show_image(veins, " veins Kirsch")
 
     # new_image = cv2.GaussianBlur(veins,(3,3),0)
     # show_image(new_image,"erode")
@@ -302,7 +301,7 @@ def detect_veins2(image):
 
 def detect_roi(img, optic_disc):
     rows, cols, _ = img.shape
-    print("rows",rows,"cols",cols)
+    # print("rows",rows,"cols",cols)
     x = optic_disc[0]
     y = optic_disc[1]
     # distance of optic disc to the macula
@@ -324,20 +323,20 @@ def detect_roi(img, optic_disc):
         translate_rect = 70
 
     #y = optic_disc[1] + 30
-    print(x, y)
-    print("oprio", optic_disc)
+    # print(x, y)
+    # print("oprio", optic_disc)
     #cv2.circle(img, (x, y), 35, (0, 255, 0), 100)
-    show_image(img,"puntos")
+    # show_image(img,"puntos")
 
 
     # cv2.rectangle(img, (x - 500 +translate_rect, y - 450), (x + 500 + translate_rect, y + 550), (0, 255, 0), 3)
 
 
-    print(x - 200+translate_rect)
+    # print(x - 200+translate_rect)
     #roi = img[y - 150:y + 150, (x - 200)+translate_rect:(x + 200)+translate_rect]
     roi = img[y - 450:y + 550, (x - 500)+translate_rect:(x + 500)+translate_rect]
 
-    show_image(imutils.resize(img, width=700), 'pequena macula')
+    # show_image(imutils.resize(img, width=700), 'pequena macula')
 
     return roi
 
@@ -384,6 +383,7 @@ def aux_template_optic_disc(template):
 
 
 def template_optic_disc():
+    print("## Creating histogram template")
     hist1 = aux_template_optic_disc(template1)
     hist2 = aux_template_optic_disc(template2)
     hist3 = aux_template_optic_disc(template3)
@@ -410,7 +410,7 @@ def template_optic_disc():
     return [blue_hist, green_hist, red_hist]
 
 
-def hist_window(img, y, x):
+def hist_window(image, y, x):
     img_window = image[(y - 40):(y + 40), (x - 40):(x + 40)]
 
     # img_window = np.asarray(img_window)
@@ -440,30 +440,30 @@ def hist_correlation(templates_histograms, histograms_window):
 
 
 def detect_drusas(img):
-    show_image(img, "1 normal")
+    # show_image(img, "1 normal")
 
     b, g, r = cv2.split(img)
-    show_image(g, "green")
+    # show_image(g, "green")
     fundus = cv2.medianBlur(g, 41)
     #show_image(g,"mediana")
     #fundus = cv2.GaussianBlur(g,(51,51),100.0,100.0,cv2.BORDER_DEFAULT)
     #fundus = cv2.GaussianBlur(g,(91,91),100.0,100.0,cv2.BORDER_DEFAULT)
-    show_image(fundus,"gaussian blur")
+    # show_image(fundus,"gaussian blur")
     g = cv2.GaussianBlur(g,(7,7),0,0,cv2.BORDER_DEFAULT)
-    show_image(g,"g2")
+    # show_image(g,"g2")
     #x = (fundus/g)*1.09
     x = (fundus/g)*1.09
     new_image = (x*255).astype(np.uint8)
-    show_image(new_image,"resultado")
+    # show_image(new_image,"resultado")
 
     # threshold
     ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
-    show_image(otsu_img, "otsu")
+    # show_image(otsu_img, "otsu")
 
 
     x = detect_veins3(img)
     otsu_img = (otsu_img/x).astype(np.uint8)
-    show_image(otsu_img,"aaaa")
+    # show_image(otsu_img,"aaaa")
 
 
     contours,_ = cv2.findContours(otsu_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -504,10 +504,10 @@ def detect_drusas(img):
         cv2.circle(img,(cx, cy), 3, (0,0,255), -1)
         """
 
-    print("total drusas",total)
+    #print("total drusas",total)
 
-
-    show_image(img,"contornos")
+    return img
+    # show_image(img,"contornos")
 
 
 def size_drusas(dimensions):
@@ -548,11 +548,11 @@ def change_background(img):
 
 def detect_optical_disc(image):
     start = time.time()
-    print("mask")
+    # print("mask")
     original_image = copy.copy(image)
     #image = get_mask(image)
-    show_image(image, "normal")
-    print("template")
+    # show_image(image, "normal")
+    # print("template")
     templates_histograms = template_optic_disc()
 
     # average = np.average(image)
@@ -568,9 +568,9 @@ def detect_optical_disc(image):
 
     correlations = []
     new_matriz = np.zeros((rows, cols))
-    print(rows, cols)
+    # print(rows, cols)
     for i in range(200, rows-230):
-        print(i)
+        # print(i)
         for j in range(0, cols):
 
 
@@ -578,23 +578,23 @@ def detect_optical_disc(image):
                 window_histogram = hist_window(image, i, j)
                 new_matriz[i][j] = hist_correlation(templates_histograms, window_histogram)
 
-    print("calculando el max")
+    # print("calculando el max")
     max = new_matriz[0][0]
     for i in range(0, rows):
         for j in range(0, cols):
             if new_matriz[i][j] > max:
                 max = new_matriz[i][j]
 
-    print("max", max)
-    print("threshold")
+    # print("max", max)
+    # print("threshold")
     image_threshold = threshold2(new_matriz, max * 0.7)
     end = time.time()
-    print(end - start)
+    # print(end - start)
     kernel = np.ones((3, 3), np.uint8)
-    show_image(image_threshold, "image threshold")
+    # show_image(image_threshold, "image threshold")
     # opening = erosion followed by dilation
     gradient = cv2.morphologyEx(image_threshold, cv2.MORPH_GRADIENT, kernel)
-    show_image(gradient, "gradient")
+    # show_image(gradient, "gradient")
 
     # calulating the center of optic disc
     x_min = 0
@@ -617,76 +617,17 @@ def detect_optical_disc(image):
                 elif x_max < j:
                     x_max = j
 
-    print(x_min, x_max, y_min, y_max)
+    # print(x_min, x_max, y_min, y_max)
     y = int(y_min + ((y_max - y_min) / 2))
     x = int(x_min + ((x_max - x_min) / 2))
 
     # x = 142
     # y = 227
     #cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
-    #show_image(image, 'circles')
+    ## show_image(image, 'circles')
 
     return [x,y]
 
-
-    # create a CLAHE object (Arguments are optional).
-    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
-    # new_image = clahe.apply(g)
-    # show_image(new_image,"clahe")
-
-    # new_image = cv2.blur(new_image,(15,15))
-    # new_image = cv2.bilateralFilter(new_image,15,75,75)
-    # new_image = cv2.medianBlur(new_image,15)
-
-    # new_image = cv2.GaussianBlur(new_image,(55,55),0)
-    # show_image(new_image,"borrosa")
-
-    # dark_pixel = removing_dark_pixel(new_image)
-    # show_image(new_image,"removing removing_dark_pixel")
-    # RRO = RRO_thresholding.RRO_thresholding()
-    # new_image = RRO.calculate(dark_pixel)
-
-    # new_image = threshold(g,average)
-
-    # new_image = cv2.Canny(g,100,100)
-    # ret,new_image = cv2.threshold(g, 0, 255, cv2.THRESH_OTSU)
-    # new_image = sobel(new_image)
-
-    # new_image = cv2.adaptiveThreshold(new_image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,11,2)
-
-    # show_image(new_image,"bordes")
-
-    # new_image = cv2.GaussianBlur(new_image,(3,3),0)
-    # show_image(new_image,"x")
-    # new_image = cv2.dilate(new_image, None, iterations=1)
-    # show_image(new_image,"dilate")
-    # new_image = cv2.erode(new_image, None, iterations=1)
-    # show_image(new_image,"erode")
-    # veins = detect_veins(image)
-
-    # optic_disc = detect_circles(new_image,veins,g)
-    # detect_macula(image,optic_disc)
-
-    # transformacion no exacta como en el paper
-    # new_image = cv2.convertScaleAbs(g, alpha=1.5, beta=1.5)
-    # show_image(new_image,"resaltado")
-    # new_image = stretch(image)
-    # show_image(g,"green channel")
-
-    # new_image = threshold(new_image,175)
-    # show_image(new_image,"transformacionzz")
-
-    # Crear un kernel de '1' de 3x3 elipse
-    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))
-
-    # Se aplica la transformacion: Opening
-    # transformacion = cv2.morphologyEx(new_image,cv2.MORPH_OPEN,kernel)
-
-    # Se aplica la transformacion: Dilate
-    # transformacion = cv2.dilate(transformacion,kernel,iterations = 1)
-    # cv2.normalize(transformacion, None, 0, 700, cv2.NORM_MINMAX)
-    # histogram(transformacion)
-    # show_image(transformacion,"transformacion")
 
 def detect_veins3(img):
     b, g, r = cv2.split(img)
@@ -697,11 +638,11 @@ def detect_veins3(img):
     image_filtered = cv2.GaussianBlur(gray,(21,21),0)
     th2 = cv2.adaptiveThreshold(image_filtered,255,cv2.ADAPTIVE_THRESH_MEAN_C,\
             cv2.THRESH_BINARY,11,2)
-    show_image(th2,"hola")
+    # show_image(th2,"hola")
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 1))
     dilate = cv2.dilate(th2, kernel)
     #dilate = cv2.morphologyEx(dilate, cv2.MORPH_CLOSE, kernel)
-    show_image(dilate,"hola2")
+    # show_image(dilate,"hola2")
     """
     final = g/dilate
     show_image(final,"final")
@@ -727,55 +668,59 @@ def change_resolution(img):
     img = imutils.resize(img, width=700)
     return img
 
-image = cv2.imread(filename)
-original_image = copy.copy(image)
+def main(image):
 
-#b, g, r = cv2.split(image)
+    original_image = copy.copy(image)
 
-# blue
-# image[:,:,0] = 0
-# green
-# image[:,:,1] = 0
-# red
-# image[:,:,2] = 0
-image = change_resolution(image)
+    #b, g, r = cv2.split(image)
 
-cols_original, rows_original, _ = original_image.shape
-cols_modified, rows_modified, _ = image.shape
-# Get the original ratio
-Rx = (rows_original/rows_modified)
-Ry = (cols_original/cols_modified)
+    # blue
+    # image[:,:,0] = 0
+    # green
+    # image[:,:,1] = 0
+    # red
+    # image[:,:,2] = 0
+    image = change_resolution(image)
 
-print("resultado",Rx,Ry)
+    cols_original, rows_original, _ = original_image.shape
+    cols_modified, rows_modified, _ = image.shape
+    # Get the original ratio
+    Rx = (rows_original/rows_modified)
+    Ry = (cols_original/cols_modified)
 
-show_image(image,"normal")
+    
 
-image = removing_dark_pixel(image)
-show_image(image,"dark")
+    # show_image(image,"normal")
+    print("# Removing dark pixel")
+    image = removing_dark_pixel(image)
+    # show_image(image,"dark")
+    print("# Detecting Optical Disc")
+    x,y = detect_optical_disc(image)
+    cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
+    # show_image(image, 'circles')
 
-x,y = detect_optical_disc(image)
-cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
-show_image(image, 'circles')
+    #cv2.circle(original_image, (round(x*Rx), round(y*Ry)), 2, (255, 0, 0), 3)
+    #cv2.circle(original_image, (round(x*Rx), round(y*Ry)), 35, (255, 0, 0), 100)
 
-#cv2.circle(original_image, (round(x*Rx), round(y*Ry)), 2, (255, 0, 0), 3)
-#cv2.circle(original_image, (round(x*Rx), round(y*Ry)), 35, (255, 0, 0), 100)
+    # show_image(original_image, 'circles2')
+    # print("OD pequenio",x,y)
+    # print("OD grande",round(x*Rx),round(y*Ry))
 
-show_image(original_image, 'circles2')
-print("OD pequenio",x,y)
-print("OD grande",round(x*Rx),round(y*Ry))
+    print("# Calculating ROI")
+    roi = detect_roi(original_image, [round(x*Rx), round(y*Ry)])
+    # show_image(roi,"roi")
+    print("# Segmenting Drusen")
+    drusas = detect_drusas(roi)
+    show_image(drusas,"Drusas")
+    print("Total Normal Drusen (<= 63 micron) : ",classification_scale["Normal"])
+    print("Total Medium Drusen (>  63 micron and <= 125 micron) : ",classification_scale["Medium"])
+    print("Total Large Drusen  (>  125 micron) : ",classification_scale["Large"])
 
+    # print(classification_scale)
 
-roi = detect_roi(original_image, [round(x*Rx), round(y*Ry)])
-show_image(roi,"roi")
+    #detect_veins(x)
+    #detect_drusas(x)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
-detect_drusas(roi)
-print("Total Normal Drusen (<= 63 micron) : ",classification_scale["Normal"])
-print("Total Medium Drusen (>  63 micron and <= 125 micron) : ",classification_scale["Medium"])
-print("Total Large Drusen  (>  125 micron) : ",classification_scale["Large"])
-
-# print(classification_scale)
-
-#detect_veins(x)
-#detect_drusas(x)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+    return drusas
