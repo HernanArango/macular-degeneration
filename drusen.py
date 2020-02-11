@@ -80,15 +80,14 @@ def detect_roi(img, optic_disc):
     cv2.putText(img, 'Fovea', (x+20,y+15), font, 2, (0, 255, 0), 2, cv2.LINE_AA)
     """
 
-    copy_image = copy.copy(img)
-    cv2.rectangle(copy_image, (x - 500 +translate_rect, y - 450), (x + 500 + translate_rect, y + 550), (0, 255, 0), 3)
-    show_image(imutils.resize(copy_image, width=700),"roi")
+
+    #cv2.rectangle(copy_image, (x - 500 +translate_rect, y - 450), (x + 500 + translate_rect, y + 550), (0, 255, 0), 3)
+
 
     # print(x - 200+translate_rect)
     #roi = img[y - 150:y + 150, (x - 200)+translate_rect:(x + 200)+translate_rect]
     roi = img[y - 450:y + 550, (x - 500)+translate_rect:(x + 500)+translate_rect]
 
-    show_image(imutils.resize(img, width=700), 'pequena macula')
 
     return roi
 
@@ -188,7 +187,7 @@ def detect_drusen(img):
     #x = (fundus/g3)*1.09
     x = (fundus/g)*1.09
     new_image = (x*255).astype(np.uint8)
-    show_image(imutils.resize(new_image, width=700),"otsu")
+    # show_image(imutils.resize(new_image, width=700),"otsu")
     # threshold Otsu
     ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
 
@@ -207,7 +206,7 @@ def detect_drusen(img):
 
     contours,_ = cv2.findContours(otsu_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    print("contornos",len(contours))
+    # print("contornos",len(contours))
 
     # dibujar los contornos
     total = 0
@@ -396,7 +395,7 @@ def main(image, debug = False):
     if debug:
         print("# Detecting Optical Disc")
     x,y = detect_optical_disc(image)
-    #cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
+    # cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
     if debug:
         print("# Calculating ROI")
     roi = detect_roi(original_image, [round(x*Rx), round(y*Ry)])
@@ -404,5 +403,5 @@ def main(image, debug = False):
         print("# Segmenting Drusen")
     drusen = detect_drusen(roi)
 
-    show_image(imutils.resize(drusen, width=700), 'drusen')
+    # show_image(imutils.resize(drusen, width=700), 'drusen')
     return [drusen,classification_scale]
