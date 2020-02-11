@@ -172,28 +172,42 @@ def hist_correlation(templates_histograms, histograms_window):
     return C
 
 
-def detect_drusas(img):
+def detect_drusen(img):
 
     b, g, r = cv2.split(img)
     fundus = cv2.medianBlur(g, 41)
-    g = cv2.GaussianBlur(g,(7,7),0,0,cv2.BORDER_DEFAULT)
+    #g = cv2.GaussianBlur(g,(7,7),0,0,cv2.BORDER_DEFAULT)
+    g = cv2.GaussianBlur(g,(15,15),0,0,cv2.BORDER_DEFAULT)
+    #g3 = cv2.GaussianBlur(g,(27,27),0,0,cv2.BORDER_DEFAULT)
+
+    #show_image(imutils.resize(g, width=700),"green")
+    #show_image(imutils.resize(g2, width=700),"green2")
+    #show_image(imutils.resize(g3, width=700),"green3")
+
+
+    #x = (fundus/g3)*1.09
     x = (fundus/g)*1.09
     new_image = (x*255).astype(np.uint8)
-
+    show_image(imutils.resize(new_image, width=700),"otsu")
     # threshold Otsu
     ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
 
     veins = detect_veins(img)
     # otsu_img = (otsu_img/veins).astype(np.uint8)
 
+    # evite division by zero
     edge_map = np.zeros_like(veins)
     non_zero = veins != 0
     edge_map[non_zero] = otsu_img[non_zero]/veins[non_zero]
     otsu_img = edge_map
 
+    #using erotion and dilation for evite count more contours by error
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
+    otsu_img = cv2.morphologyEx(otsu_img, cv2.MORPH_OPEN, kernel)
 
-    contours,_ = cv2.findContours(otsu_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours,_ = cv2.findContours(otsu_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    print("contornos",len(contours))
 
     # dibujar los contornos
     total = 0
@@ -215,14 +229,14 @@ def detect_drusas(img):
 
         #cv2.circle(img,(cx, cy), 3, (0,0,255), -1)
 
-        #size_drusas([cx,cy],momentos)
+        #size_drusen([cx,cy],momentos)
         #break
 
         rect = cv2.minAreaRect(c)
         box = cv2.boxPoints(rect)
         box = np.int0(box)
-        # im = cv2.drawContours(img,[box],0,(255,0,0),2)
-        size_drusas(rect[1])
+        im = cv2.drawContours(img,[box],0,(255,0,0),2)
+        size_drusen(rect[1])
         """
         cx = int(momentos['m10']/momentos['m00'])
         cy = int(momentos['m01']/momentos['m00'])
@@ -230,13 +244,13 @@ def detect_drusas(img):
         cv2.circle(img,(cx, cy), 3, (0,0,255), -1)
         """
 
-    #print("total drusas",total)
+    #print("total drusen",total)
     #show_image(img,"contornos")
     return img
 
 
 
-def size_drusas(dimensions):
+def size_drusen(dimensions):
     diameter = 0
     #bigest side
     if dimensions[0] > dimensions[1]:
@@ -388,7 +402,7 @@ def main(image, debug = False):
     roi = detect_roi(original_image, [round(x*Rx), round(y*Ry)])
     if debug:
         print("# Segmenting Drusen")
-    drusen = detect_drusas(roi)
+    drusen = detect_drusen(roi)
 
-    show_image(imutils.resize(drusen, width=700), 'drusas')
+    show_image(imutils.resize(drusen, width=700), 'drusen')
     return [drusen,classification_scale]
