@@ -74,19 +74,28 @@ def detect_roi(img, optic_disc):
     else:
 
         x = x + distance
-        translate_rect = 70
+        translate_rect = 0
     """
     cv2.circle(img, (x, y), 0, (0, 255, 0), 40)
     cv2.putText(img, 'Fovea', (x+20,y+15), font, 2, (0, 255, 0), 2, cv2.LINE_AA)
     """
 
 
-    #cv2.rectangle(copy_image, (x - 500 +translate_rect, y - 450), (x + 500 + translate_rect, y + 550), (0, 255, 0), 3)
+    width_roi = cols * 0.387
+    height_roi = rows * 0.51
+
+    original_image = copy.copy(img)
+
+    #cv2.rectangle(original_image, (x - 500 +translate_rect, y - 450), (x + 500 + translate_rect, y + 550), (0, 255, 0), 3)
+    #show_image(imutils.resize(original_image, width=700),"roi1")
+    #cv2.rectangle(img, (x - round(width_roi/2) +translate_rect, y - round(height_roi/2)), (x + round(width_roi/2) + translate_rect, y + round(height_roi/2)), (0, 255, 0), 3)
+    #show_image(imutils.resize(img, width=700),"roi")
+
 
 
     # print(x - 200+translate_rect)
-    #roi = img[y - 150:y + 150, (x - 200)+translate_rect:(x + 200)+translate_rect]
-    roi = img[y - 450:y + 550, (x - 500)+translate_rect:(x + 500)+translate_rect]
+    roi = img[y - round(height_roi/2):y + round(height_roi/2), (x - round(width_roi/2)):(x + round(width_roi/2))]
+    #roi = img[y - 450:y + 550, (x - 500)+translate_rect:(x + 500)+translate_rect]
 
 
     return roi
@@ -395,7 +404,8 @@ def main(image, debug = False):
     if debug:
         print("# Detecting Optical Disc")
     x,y = detect_optical_disc(image)
-    # cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
+    #cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
+
     if debug:
         print("# Calculating ROI")
     roi = detect_roi(original_image, [round(x*Rx), round(y*Ry)])
