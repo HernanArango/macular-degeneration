@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import copy
 import time
 import imutils
+from retinex import Retinex
 
 
 template1 = "./templates_od/od1.png"
@@ -86,8 +87,8 @@ def detect_roi(img, optic_disc):
 
     original_image = copy.copy(img)
 
-    #cv2.rectangle(original_image, (x - 500 +translate_rect, y - 450), (x + 500 + translate_rect, y + 550), (0, 255, 0), 3)
-    #show_image(imutils.resize(original_image, width=700),"roi1")
+    cv2.rectangle(original_image, (x - 500 +translate_rect, y - 450), (x + 500 + translate_rect, y + 550), (0, 255, 0), 3)
+    show_image(original_image,"roi1")
     #cv2.rectangle(img, (x - round(width_roi/2) +translate_rect, y - round(height_roi/2)), (x + round(width_roi/2) + translate_rect, y + round(height_roi/2)), (0, 255, 0), 3)
     #show_image(imutils.resize(img, width=700),"roi")
 
@@ -179,27 +180,13 @@ def hist_correlation(templates_histograms, histograms_window):
 
     return C
 
-
-def detect_drusen(img):
-
-    b, g, r = cv2.split(img)
-    fundus = cv2.medianBlur(g, 41)
-    #g = cv2.GaussianBlur(g,(7,7),0,0,cv2.BORDER_DEFAULT)
-    g = cv2.GaussianBlur(g,(15,15),0,0,cv2.BORDER_DEFAULT)
-    #g3 = cv2.GaussianBlur(g,(27,27),0,0,cv2.BORDER_DEFAULT)
-
-    #show_image(imutils.resize(g, width=700),"green")
-    #show_image(imutils.resize(g2, width=700),"green2")
-    #show_image(imutils.resize(g3, width=700),"green3")
-
-
-    #x = (fundus/g3)*1.09
+def segment_drusen(img):
+    fundus = cv2.medianBlur(img, 71)
+    g = cv2.GaussianBlur(img,(15,15),0,0,cv2.BORDER_DEFAULT)
     x = (fundus/g)*1.09
     new_image = (x*255).astype(np.uint8)
-    # show_image(imutils.resize(new_image, width=700),"otsu")
-    # threshold Otsu
     ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
-
+    """
     veins = detect_veins(img)
     # otsu_img = (otsu_img/veins).astype(np.uint8)
 
@@ -208,6 +195,304 @@ def detect_drusen(img):
     non_zero = veins != 0
     edge_map[non_zero] = otsu_img[non_zero]/veins[non_zero]
     otsu_img = edge_map
+    ret, otsu_img = cv2.threshold(otsu_img, 0, 255, cv2.THRESH_OTSU)
+    """
+    return otsu_img
+
+def segment_drusen_soft(img):
+    fundus = cv2.medianBlur(img, 151)
+    g = cv2.GaussianBlur(img,(15,15),0,0,cv2.BORDER_DEFAULT)
+    x = (fundus/g)*1.09
+    new_image = (x*255).astype(np.uint8)
+    ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
+
+    return otsu_img
+
+def segment_drusen_division(img):
+    fundus = cv2.medianBlur(img, 71)
+    g = cv2.GaussianBlur(img,(3,3),0,0,cv2.BORDER_DEFAULT)
+    x = (fundus/g)*1.09
+    new_image = (x*255).astype(np.uint8)
+    ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
+
+    return otsu_img
+
+
+def detect_drusen2(image):
+    b, g, r = cv2.split(image)
+    img = cv2.GaussianBlur(g,(3,3),0,0,cv2.BORDER_DEFAULT)
+    n = 3
+    N = n * n
+    rows, cols = img.shape
+    print("----",rows,cols)
+    width = round(cols / n)
+    height = round(rows / n)
+    print(width,height)
+    space_height = 0
+
+    row = []
+    col = []
+    """
+    for i in range(0,n):
+        space_width = 0
+        for j in range(0,n):
+            little_image = img[space_height:height, space_width:width]
+            col.append(segment_drusen(little_image))
+            space_width += width
+
+        space_height += space_height
+    """
+    width2 = width*2
+    width3 = width*3
+
+
+    img1 = img[0:height, 0:width]
+    print(len(img1[0]))
+    img2 = img[0:height, width:width2]
+    print(len(img2[0]))
+    img3 = img[0:height, width2:width3]
+    print(len(img3[0]))
+    img4 = img[height:height*2, 0:width]
+    img5 = img[height:height*2, width:width2]
+    img6 = img[height:height*2, width2:width3]
+
+    img7 = img[(height*2):height*3, 0:width]
+    img8 = img[(height*2):height*3, width:width2]
+    img9 = img[(height*2):height*3, width2:width3]
+
+
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
+
+    img1 = segment_drusen(img1)
+    img2 = segment_drusen(img2)
+    img3 = segment_drusen(img3)
+    img4 = segment_drusen(img4)
+    img5 = segment_drusen(img5)
+    img6 = segment_drusen(img6)
+    img7 = segment_drusen(img7)
+    img8 = segment_drusen(img8)
+    img9 = segment_drusen(img9)
+
+    row1 = cv2.hconcat([img1,img2,img3])
+    row2 = cv2.hconcat([img4,img5,img6])
+    row3 = cv2.hconcat([img7,img8,img9])
+
+    new_image = cv2.vconcat([row1,row2,row3])
+
+    #new_image = (x*255).astype(np.uint8)
+    # show_image(imutils.resize(new_image, width=700),"otsu")
+    # threshold Otsu
+    ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
+
+    veins = detect_veins(img)
+    #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+    #veins = cv2.erode(veins, kernel)
+    show_image(veins,"venas")
+
+
+    otsu_img = (otsu_img/veins).astype(np.uint8)
+
+    ret, otsu_img = cv2.threshold(otsu_img, 0, 255, cv2.THRESH_OTSU)
+    show_image(otsu_img,"new_image")
+
+
+    prueba = threshold_color(otsu_img,image)
+    show_image(prueba,"segmentaicon2")
+
+    return img
+
+def detect_drusen_division(image):
+        b, g, r = cv2.split(image)
+        img = cv2.GaussianBlur(g,(3,3),0,0,cv2.BORDER_DEFAULT)
+        n = 4
+        N = n * n
+        rows, cols = img.shape
+        print("----",rows,cols)
+        width = round(cols / n)
+        height = round(rows / n)
+        print(width,height)
+        space_height = 0
+
+        row = []
+        col = []
+        """
+        for i in range(0,n):
+            space_width = 0
+            for j in range(0,n):
+                little_image = img[space_height:height, space_width:width]
+                col.append(segment_drusen(little_image))
+                space_width += width
+
+            space_height += space_height
+        """
+        width2 = width*2
+        width3 = width*3
+        width4 = width*4
+
+
+        img1 = img[0:height, 0:width]
+        img2 = img[0:height, width:width2]
+        img3 = img[0:height, width2:width3]
+        img4 = img[0:height, width3:width4+2]
+
+
+        img5 = img[height:height*2, 0:width]
+        img6 = img[height:height*2, width:width2]
+        img7 = img[height:height*2, width2:width3]
+        img8 = img[height:height*2, width3:width4+2]
+
+
+        img9 = img[(height*2):height*3, 0:width]
+        img10 = img[(height*2):height*3, width:width2]
+        img11 = img[(height*2):height*3, width2:width3]
+        img12 = img[(height*2):height*3, width3:width4+2]
+
+        img13 = img[(height*3):height*4, 0:width]
+        img14 = img[(height*3):height*4, width:width2]
+        img15 = img[(height*3):height*4, width2:width3]
+        img16 = img[(height*3):height*4, width3:width4+2]
+
+
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
+
+        img1 = segment_drusen_division(img1)
+        img2 = segment_drusen_division(img2)
+        img3 = segment_drusen_division(img3)
+        img4 = segment_drusen_division(img4)
+        img5 = segment_drusen_division(img5)
+        img6 = segment_drusen_division(img6)
+        img7 = segment_drusen_division(img7)
+        img8 = segment_drusen_division(img8)
+        img9 = segment_drusen_division(img9)
+        img10 = segment_drusen_division(img10)
+        img11 = segment_drusen_division(img11)
+        img12 = segment_drusen_division(img12)
+        img13 = segment_drusen_division(img13)
+        img14 = segment_drusen_division(img14)
+        img15 = segment_drusen_division(img15)
+        img16 = segment_drusen_division(img16)
+
+        row1 = cv2.hconcat([img1,img2,img3, img4])
+        row2 = cv2.hconcat([img5,img6,img7, img8])
+        row3 = cv2.hconcat([img9,img10,img11, img12])
+        row4 = cv2.hconcat([img13,img14,img15, img16])
+
+        new_image = cv2.vconcat([row1,row2,row3,row4])
+
+        #new_image = (x*255).astype(np.uint8)
+        #show_image(imutils.resize(new_image, width=700),"otsuxxx")
+        print(new_image.shape,"otsuxxx")
+        # threshold Otsu
+        ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
+
+        veins = detect_veins(img)
+        #kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+        #veins = cv2.erode(veins, kernel)
+        show_image(veins,"venas")
+
+
+        otsu_img = (otsu_img/veins).astype(np.uint8)
+
+        ret, otsu_img = cv2.threshold(otsu_img, 0, 255, cv2.THRESH_OTSU)
+        show_image(otsu_img,"new_image")
+
+
+        prueba = threshold_color(otsu_img,image)
+        show_image(prueba,"segmentaicon2")
+
+        return img
+
+def threshold_color(otsu_img,img):
+    b, g, r = cv2.split(img)
+    average = np.average(g)
+    rows, cols = otsu_img.shape
+
+    for i in range(0, rows):
+        for j in range(0, cols):
+
+            if otsu_img[i][j] != 0:
+                if g[i][j] < average:
+                    otsu_img[i][j] = 0
+
+    return otsu_img
+
+def iluminationx(img):
+    b, g, r = cv2.split(img)
+    """
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, s, v = hsv_img[:, :, 0], hsv_img[:, :, 1], hsv_img[:, :, 2]
+    m = np.max(v)
+
+    #G = (m*(v/m)**(1/2.2)) / v
+
+    rows, cols = g.shape
+    new_image = np.zeros((rows, cols))
+    G = np.zeros((rows, cols))
+    for i in range(0,rows):
+        for j in range(0,cols):
+            G[i][j] = (m*(v[i][j]/m)**(1/2.2)) / v[i][j]
+
+    for i in range(0,rows):
+        for j in range(0,cols):
+            new_image[i][j] = r[i][j] * G[i][j]
+    """
+    show_image(imutils.resize(g, width=700),"fin1")
+    fundus = cv2.medianBlur(g, 71)
+    new_image = (g/fundus)
+
+    #new_image = (new_image*0.2)
+    new_image = (new_image*55).astype(np.uint8)
+    show_image(imutils.resize(new_image, width=700),"final")
+
+    new_image = cv2.GaussianBlur(new_image,(1,1),0,0,cv2.BORDER_DEFAULT)
+
+    #clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
+    #resaltada = clahe.apply(new_image)
+    #show_image(imutils.resize(resaltada, width=700),"final resaltada")
+
+
+
+
+
+
+    return new_image
+
+def detect_drusen_prueba(img):
+
+    b, g_original, r = cv2.split(img)
+
+    g = iluminationx(img)
+    #fundus = cv2.medianBlur(g, 41)
+    fundus = cv2.medianBlur(g, 151)
+    #g = cv2.GaussianBlur(g,(7,7),0,0,cv2.BORDER_DEFAULT)
+    g = cv2.GaussianBlur(g,(35,35),0,0,cv2.BORDER_DEFAULT)
+    #g3 = cv2.GaussianBlur(g,(27,27),0,0,cv2.BORDER_DEFAULT)
+
+    #x = (fundus/g3)*1.09
+    x = (fundus/g)*1.09
+    #show_image(imutils.resize(x, width=700),"x")
+    new_image = (x*255).astype(np.uint8)
+    #show_image(imutils.resize(new_image, width=700),"otsu n")
+    # threshold Otsu
+    ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
+    #show_image(imutils.resize(otsu_img, width=700),"con venas")
+    veins = detect_veins(g_original)
+    # otsu_img = (otsu_img/veins).astype(np.uint8)
+
+
+    # evite division by zero
+    edge_map = np.zeros_like(veins)
+    non_zero = veins != 0
+    edge_map[non_zero] = otsu_img[non_zero]/veins[non_zero]
+    otsu_img = edge_map
+
+
+
+    ret, otsu_img = cv2.threshold(otsu_img, 0, 255, cv2.THRESH_OTSU)
+    show_image(otsu_img,"segmentaicon")
+
+    otsu_img = threshold_color(otsu_img,img)
+    show_image(otsu_img,"segmentaicon2")
 
     #using erotion and dilation for evite count more contours by error
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
@@ -243,7 +528,7 @@ def detect_drusen(img):
         rect = cv2.minAreaRect(c)
         box = cv2.boxPoints(rect)
         box = np.int0(box)
-        im = cv2.drawContours(img,[box],0,(255,0,0),2)
+        #im = cv2.drawContours(img,[box],0,(255,0,0),2)
         size_drusen(rect[1])
         """
         cx = int(momentos['m10']/momentos['m00'])
@@ -253,8 +538,100 @@ def detect_drusen(img):
         """
 
     #print("total drusen",total)
-    #show_image(img,"contornos")
+    show_image(imutils.resize(img, width=700),"contornos")
     return img
+
+
+def detect_drusen2x(img):
+
+    b, g, r = cv2.split(img)
+
+    g = iluminationx(img)
+    #fundus = cv2.medianBlur(g, 41)
+    fundus = cv2.medianBlur(g, 71)
+    #g = cv2.GaussianBlur(g,(7,7),0,0,cv2.BORDER_DEFAULT)
+    g = cv2.GaussianBlur(g,(15,15),0,0,cv2.BORDER_DEFAULT)
+    #g3 = cv2.GaussianBlur(g,(27,27),0,0,cv2.BORDER_DEFAULT)
+
+    #show_image(imutils.resize(g, width=700),"green")
+    #show_image(imutils.resize(g2, width=700),"green2")
+    #show_image(imutils.resize(g3, width=700),"green3")
+
+    #show_image(imutils.resize(g, width=700),"g blur")
+    #show_image(imutils.resize(fundus, width=700),"fundus")
+    #x = (fundus/g3)*1.09
+    x = (fundus/g)*1.09
+    #show_image(imutils.resize(x, width=700),"x")
+    new_image = (x*255).astype(np.uint8)
+    #show_image(imutils.resize(new_image, width=700),"otsu n")
+    # threshold Otsu
+    ret, otsu_img = cv2.threshold(new_image, 0, 255, cv2.THRESH_OTSU)
+    #show_image(imutils.resize(otsu_img, width=700),"con venas")
+    veins = detect_veins(g)
+    # otsu_img = (otsu_img/veins).astype(np.uint8)
+
+
+    # evite division by zero
+    edge_map = np.zeros_like(veins)
+    non_zero = veins != 0
+    edge_map[non_zero] = otsu_img[non_zero]/veins[non_zero]
+    otsu_img = edge_map
+
+
+
+    ret, otsu_img = cv2.threshold(otsu_img, 0, 255, cv2.THRESH_OTSU)
+    #show_image(otsu_img,"segmentaicon")
+
+    otsu_img = threshold_color(otsu_img,img)
+    show_image(otsu_img,"segmentaicon2")
+
+    #using erotion and dilation for evite count more contours by error
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
+    otsu_img = cv2.morphologyEx(otsu_img, cv2.MORPH_OPEN, kernel)
+
+    contours,_ = cv2.findContours(otsu_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # print("contornos",len(contours))
+
+    # dibujar los contornos
+    total = 0
+    for c in contours:
+        cv2.drawContours(img, [c], 0, (0, 255, 0), 2, cv2.LINE_AA)
+        total = total + 1
+
+        momentos = cv2.moments(c)
+        if momentos['m10']== 0 or momentos['m00']==0:
+            cx = 0
+        else:
+            cx = int(momentos['m10']/momentos['m00'])
+
+
+        if momentos['m01']== 0 or momentos['m00']==0:
+            cy = 0
+        else:
+            cy = int(momentos['m01']/momentos['m00'])
+
+        #cv2.circle(img,(cx, cy), 3, (0,0,255), -1)
+
+        #size_drusen([cx,cy],momentos)
+        #break
+
+        rect = cv2.minAreaRect(c)
+        box = cv2.boxPoints(rect)
+        box = np.int0(box)
+        #im = cv2.drawContours(img,[box],0,(255,0,0),2)
+        size_drusen(rect[1])
+        """
+        cx = int(momentos['m10']/momentos['m00'])
+        cy = int(momentos['m01']/momentos['m00'])
+        #Dibujar el centro
+        cv2.circle(img,(cx, cy), 3, (0,0,255), -1)
+        """
+
+    #print("total drusen",total)
+    show_image(imutils.resize(img, width=700),"contornos")
+    return img
+
 
 
 
@@ -365,8 +742,8 @@ def detect_optical_disc(image):
     return [x,y]
 
 
-def detect_veins(img):
-    b, g, r = cv2.split(img)
+def detect_veins(g):
+
 
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
     gray = clahe.apply(g)
@@ -385,12 +762,71 @@ def change_resolution(img):
     img = imutils.resize(img, width=700)
     return img
 
+def non_uniform_correction(img):
+    b, g, r = cv2.split(img)
+    fundus = cv2.medianBlur(img, 41)
+    g = cv2.GaussianBlur(img,(1,1),0,0,cv2.BORDER_DEFAULT)
+
+    result = g/fundus
+
+    show_image(result,"result")
+
+def contrast_enhancement(g):
+    rows, cols = g.shape
+    """
+    # window_histogram = hist_window(image,500,200)
+    # hist_correlation(templates_histograms,window_histogram)
+    new_image = np.zeros((rows, cols))
+    for i in range(5, rows-5):
+        for j in range(5, cols-5):
+            img_window = g[(i - 5):(i + 5), (j - 5):(j + 5)]
+            mean = np.mean(img_window)
+            max = np.max(img_window)
+            min = np.min(img_window)
+            new_image[i][j] = 5*g[i][j]-6*mean+max+1.5*min
+    print(new_image)
+    show_image(new_image,"new_image")
+    """
+
+def ilumination_correction(img):
+    b, g, r = cv2.split(img)
+    show_image(imutils.resize(g, width=700),"normalG")
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+    L,A,B=cv2.split(lab)
+
+
+    # hsv_planes[0] // H channel
+    # hsv_planes[1] // S channel
+    # hsv_planes[2] // V channel
+
+    h, s, v = hsv_img[:, :, 0], hsv_img[:, :, 1], hsv_img[:, :, 2]
+    f = L
+    #show_image(v,"v")
+    # f' = f - b  + mean(b)
+    b = cv2.GaussianBlur(f,(91,91),0,0,cv2.BORDER_DEFAULT)
+    mean = np.median(b)
+    show_image(b,"b")
+
+    result = f - b + mean
+
+    lab_image = cv2.merge([L, A, B])
+    final_image = cv2.cvtColor(lab_image, cv2.COLOR_Lab2RGB)
+
+
+    b, g, r = cv2.split(final_image)
+
+    show_image(imutils.resize(g, width=700),"superG")
+    show_image(imutils.resize(result, width=700),"f")
+
 def main(image, debug = False):
 
     original_image = copy.copy(image)
     if debug:
         print("# Changing Resolution")
     image = change_resolution(image)
+
+
 
     cols_original, rows_original, _ = original_image.shape
     cols_modified, rows_modified, _ = image.shape
@@ -404,6 +840,11 @@ def main(image, debug = False):
     if debug:
         print("# Detecting Optical Disc")
     x,y = detect_optical_disc(image)
+    #x = 525
+    #y = 206
+    print(x,y)
+
+
     #cv2.circle(image, (x, y), 2, (255, 0, 0), 3)
 
     if debug:
@@ -411,7 +852,9 @@ def main(image, debug = False):
     roi = detect_roi(original_image, [round(x*Rx), round(y*Ry)])
     if debug:
         print("# Segmenting Drusen")
-    drusen = detect_drusen(roi)
+    print(roi.shape)
+    #ilumination_correction(roi)
+    drusen = detect_drusen2x(roi)
 
     # show_image(imutils.resize(drusen, width=700), 'drusen')
     return [drusen,classification_scale]
