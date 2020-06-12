@@ -349,11 +349,8 @@ def detect_drusen(img):
     contours,_ = cv2.findContours(otsu_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # dibujar los contornos
-    total = 0
-    for c in contours:
-        cv2.drawContours(img, [c], 0, (0, 255, 0), 2, cv2.LINE_AA)
-        total = total + 1
 
+    for c in contours:
         momentos = cv2.moments(c)
         if momentos['m10']== 0 or momentos['m00']==0:
             cx = 0
@@ -370,7 +367,20 @@ def detect_drusen(img):
         rect = cv2.minAreaRect(c)
         box = cv2.boxPoints(rect)
         box = np.int0(box)
-        size_drusen(rect[1])
+        classification = size_drusen(rect[1])
+
+        # Normal drusen
+        if classification == 1:
+            # draw contours
+            cv2.drawContours(img, [c], 0, (0, 255, 0), 2, cv2.LINE_AA)
+        # Medium Drusen
+        elif classification == 2:
+            # draw contours
+            cv2.drawContours(img, [c], 0, (255, 0, 0), 2, cv2.LINE_AA)
+        # Large Drusen
+        else:
+            # draw contours
+            cv2.drawContours(img, [c], 0, (0, 0, 255), 2, cv2.LINE_AA)
 
     return img
 
@@ -398,15 +408,22 @@ def size_drusen(dimensions):
     micron = 3.4
     # transform diameter in pixel to micron -> 1px = 3.4 micron
     diameter = diameter * micron
+
+    scale = 0
     #normal --->   <= 63 micron
     if diameter <= 63:
         classification_scale["Normal"] += 1
+        scale = 1
     #Early AMD --->  Medium Drusen > 63 micron and <= 125 miron
     elif diameter > 63 and diameter <= 125:
         classification_scale["Medium"] += 1
+        scale = 2
     #Intermetiate AMD --> Large Drusen > 125 micron
     else:
         classification_scale["Large"] += 1
+        scale = 3
+
+    return scale
 
 
 def detect_optical_disc(image):

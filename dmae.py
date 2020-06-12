@@ -1,5 +1,6 @@
 import argparse
 import cv2
+import imutils
 import drusen
 
 parser = argparse.ArgumentParser()
@@ -16,7 +17,7 @@ def show_result_drusen_classification(classification_scale):
 
 
 def show_image(image, tittle):
-    cv2.imshow(tittle, image)
+    cv2.imshow(tittle, imutils.resize(image, width=700))
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
